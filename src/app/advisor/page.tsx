@@ -90,7 +90,9 @@ export default function AdvisorPage() {
         body: JSON.stringify({
           message: textToSend,
           language,
-          history: messages.filter(m => m.role === "user" || m.role === "assistant").slice(-6), // Send last 6 for context
+          history: messages
+            .filter((m, i) => i > 0 && (m.role === "user" || m.role === "assistant")) // Skip bot greeting (index 0)
+            .slice(-6),
         }),
       });
 

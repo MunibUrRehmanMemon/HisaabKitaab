@@ -120,7 +120,7 @@ Your expertise includes:
 - Tax planning (Pakistan)
 
 Guidelines:
-- Respond in ${language === "ur" ? "Urdu" : "English"}
+- Detect the language of the user's CURRENT message and respond in THAT language. If user writes in English, respond in English. If Urdu, respond in Urdu.
 - Be specific to Pakistani context (PKR currency, local banks like HBL, UBL, Meezan, Pakistani economy)
 - Keep responses concise, friendly, and actionable
 - For complex topics, break down advice into simple steps
@@ -147,7 +147,7 @@ Provide a helpful, contextual response:`;
             content: systemPrompt,
           },
         ],
-        temperature: 0.7,
+        temperature: 0.3,
       }),
     });
 

@@ -16,7 +16,7 @@ interface Tool {
 const tools: Tool[] = [
   {
     name: "create_transaction",
-    description: "Create a new transaction (income or expense) for the user. Use this when user says they spent money, earned money, or wants to log a transaction.",
+    description: "Create a new transaction (income or expense) for the user. Use this when user says they spent money, earned money, received profit, or wants to log a transaction. IMPORTANT: When using this tool, do NOT also call get_financial_overview or get_spending_summary — just create the transaction and confirm it briefly.",
     input_schema: {
       type: "object",
       properties: {
@@ -82,7 +82,7 @@ const tools: Tool[] = [
   },
   {
     name: "get_financial_overview",
-    description: "Get a complete financial overview: total income, expenses, net balance, family members, top categories, and recent activity. Use this as the FIRST tool when user asks general questions like 'how are my finances?', 'give me a summary', 'how much have I saved?', or any broad question about their financial health.",
+    description: "Get a complete financial overview: total income, expenses, net balance, family members, top categories, and recent activity. Use ONLY when user explicitly asks for a summary/overview like 'how are my finances?', 'give me a summary', 'how much have I saved?'. Do NOT use this after creating a transaction.",
     input_schema: {
       type: "object",
       properties: {
@@ -577,12 +577,19 @@ Use the tools to get MORE DETAILED data when needed. Always reference the user's
 
     const systemPrompt = `You are an intelligent AI financial advisor for HisaabKitaab (حساب کتاب), a Pakistani family finance app.
 
+🗣️ LANGUAGE RULE (CRITICAL):
+- Detect the language of the user's CURRENT message.
+- If the user writes in English → respond ONLY in English.
+- If the user writes in Urdu → respond ONLY in Urdu.
+- If mixed → respond in whichever language dominates the message.
+- The app UI language setting is: ${language === "ur" ? "Urdu" : "English"} — but ALWAYS follow the user's message language, NOT the setting.
+- NEVER switch languages mid-response.
+
 ⚠️ ABSOLUTE RULE — NON-NEGOTIABLE:
 You MUST REFUSE any question that is NOT about personal finance, money management, budgeting, savings, investments, taxes, banking, or the HisaabKitaab app.
-If the user asks about history, politics, celebrities, sports, entertainment, science, coding, general knowledge, or ANYTHING unrelated to finance:
+If the user asks about ANYTHING unrelated to finance:
 - DO NOT use any tools
-- ONLY reply with: "معذرت، میں صرف مالیات کے سوالات کا جواب دے سکتا ہوں۔ / Sorry, I can only help with financial matters."
-- No exceptions. Do not try to be helpful about non-finance topics.
+- ONLY reply: "Sorry, I can only help with financial matters." (or the Urdu equivalent if they wrote in Urdu)
 
 🎯 YOUR CAPABILITIES (only for finance topics):
 1. Creating transactions when users tell you about expenses/income
@@ -592,18 +599,22 @@ If the user asks about history, politics, celebrities, sports, entertainment, sc
 5. Comparing member spending and income contributions
 
 📊 TOOL USAGE GUIDE:
-- "I spent X on Y" / "I earned X" → create_transaction
+- "I spent X on Y" / "add X as expense/profit" → create_transaction ONLY. Do NOT call other tools. Just confirm briefly.
 - "What was my last transaction?" / "Show recent expenses" → get_recent_transactions
 - "Where is my money going?" / "How much on groceries?" → get_spending_summary
 - "How are my finances?" / "Summary" / "How much have I saved?" → get_financial_overview
-- "Who spends the most?" / "How much did X spend?" / "Member comparison" → get_member_spending
+- "Who spends the most?" / "How much did X spend?" → get_member_spending
 - For BROAD questions, use get_financial_overview FIRST, then other tools if needed
 - ALWAYS call a tool when the user asks about their data — do NOT guess from context alone
+
+✅ RESPONSE STYLE:
+- When creating a transaction: confirm with ONE short sentence (e.g. "Done! Added PKR 1,000 as income (Salary)."). Do NOT give a full financial overview unless asked.
+- When answering data questions: be concise, cite specific PKR amounts.
+- Keep responses SHORT (2-4 sentences) unless user asks for detailed analysis.
+- Do NOT repeat the full financial overview on every response.
 ${financialContext}
 
-Guidelines:
-- Respond in ${language === "ur" ? "Urdu (اردو)" : "English"}
-- Be conversational, specific, and data-driven — cite actual PKR amounts from their data
+Additional guidelines:
 - Currency: PKR (Pakistani Rupees — never use ₹ or Rs. or INR)
 - Pakistani context: HBL, UBL, Meezan Bank, PSX, prize bonds, NSS, gold, Islamic finance
 - When giving advice, reference their actual spending categories and amounts
@@ -619,7 +630,7 @@ Guidelines:
         system: systemPrompt,
         messages: conversationMessages,
         tools: tools,
-        temperature: 0.7,
+        temperature: 0.3,
       }),
     });
 
@@ -690,6 +701,7 @@ Guidelines:
           system: systemPrompt,
           messages: loopMessages,
           tools: tools,
+          temperature: 0.3,
         }),
       });
 
