@@ -292,12 +292,23 @@ async function executeToolCall(toolName: string, toolInput: any, userId: string)
       const daysAgo = new Date();
       daysAgo.setDate(daysAgo.getDate() - (toolInput.days || 30));
 
+      // Period transactions
       const { data: allTx } = await supabase
         .from("transactions")
         .select("type, amount, category_id, categories(name_en), description_en, transaction_date, added_by")
         .eq("account_id", account.id)
         .gte("transaction_date", daysAgo.toISOString().split("T")[0])
         .order("transaction_date", { ascending: false });
+
+      // ALL-TIME balance (no date filter — matches dashboard "Current Balance")
+      const { data: allTimeTx } = await supabase
+        .from("transactions")
+        .select("type, amount")
+        .eq("account_id", account.id);
+
+      const allTimeIncome = (allTimeTx || []).filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const allTimeExpense = (allTimeTx || []).filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const allTimeBalance = allTimeIncome - allTimeExpense;
 
       const txList = allTx || [];
       const totalIncome = txList.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
@@ -348,9 +359,12 @@ async function executeToolCall(toolName: string, toolInput: any, userId: string)
         overview: {
           account_name: account.name,
           period_days: toolInput.days || 30,
-          total_income: totalIncome,
-          total_expense: totalExpense,
-          net_savings: totalIncome - totalExpense,
+          period_income: totalIncome,
+          period_expense: totalExpense,
+          period_net_cash_flow: totalIncome - totalExpense,
+          all_time_income: allTimeIncome,
+          all_time_expense: allTimeExpense,
+          all_time_balance: allTimeBalance,
           savings_rate: totalIncome > 0 ? `${((totalIncome - totalExpense) / totalIncome * 100).toFixed(1)}%` : "N/A",
           total_transactions: txList.length,
           family_members: members.map((m) => ({ name: m.name, role: m.role })),
@@ -533,19 +547,36 @@ export async function POST(request: NextRequest) {
           ? `Last transaction: ${(lastTx as any).type} of PKR ${(lastTx as any).amount} on ${(lastTx as any).transaction_date} for ${(lastTx as any).categories?.name_en || "Other"}${(lastTx as any).added_by ? ` (by ${profileNames[(lastTx as any).added_by] || "User"})` : ""}`
           : "No recent transactions";
 
+        // Compute all-time balance too
+        const { data: allTimeTxCtx } = await supabase
+          .from("transactions")
+          .select("type, amount")
+          .eq("account_id", userAccount.id);
+        const allTimeIncomeCtx = (allTimeTxCtx || []).filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+        const allTimeExpenseCtx = (allTimeTxCtx || []).filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+        const allTimeBalanceCtx = allTimeIncomeCtx - allTimeExpenseCtx;
+
         financialContext = `
 
-📊 USER'S CURRENT FINANCIAL DATA (last 30 days):
+📊 USER'S CURRENT FINANCIAL DATA:
 - Account: ${userAccount.name}
 - Family Members: ${memberList.length > 0 ? memberList.join(", ") : "Solo account"}
-- Total Income: PKR ${totalIncome.toLocaleString("en-PK")}
-- Total Expenses: PKR ${totalExpense.toLocaleString("en-PK")}
-- Net Savings: PKR ${(totalIncome - totalExpense).toLocaleString("en-PK")}
+
+Last 30 days:
+- Income: PKR ${totalIncome.toLocaleString("en-PK")}
+- Expenses: PKR ${totalExpense.toLocaleString("en-PK")}
+- Net Cash Flow: PKR ${(totalIncome - totalExpense).toLocaleString("en-PK")}
 - Transactions: ${txList.length}
 - Top Expense Categories: ${topCats.map(([c, a]) => `${c}: PKR ${(a as number).toLocaleString("en-PK")}`).join(", ") || "None"}
+
+All-time:
+- Total Income: PKR ${allTimeIncomeCtx.toLocaleString("en-PK")}
+- Total Expenses: PKR ${allTimeExpenseCtx.toLocaleString("en-PK")}
+- Current Balance: PKR ${allTimeBalanceCtx.toLocaleString("en-PK")}
+
 - ${lastTxInfo}
 
-Use the tools to get MORE DETAILED data when needed. Always reference the user's ACTUAL numbers when giving advice.`;
+Use the tools to get MORE DETAILED data when needed. ONLY report numbers that come from the data above or from tool results. NEVER make up or agree with numbers you haven't verified.`;
       }
     } catch (ctxErr) {
       console.error("Error fetching financial context:", ctxErr);
@@ -612,6 +643,14 @@ If the user asks about ANYTHING unrelated to finance:
 - When answering data questions: be concise, cite specific PKR amounts.
 - Keep responses SHORT (2-4 sentences) unless user asks for detailed analysis.
 - Do NOT repeat the full financial overview on every response.
+- "Current Balance" means ALL-TIME balance (all_time_balance field), NOT the period net cash flow.
+
+🚫 ANTI-HALLUCINATION RULES (CRITICAL):
+- ONLY state numbers that appear in tool results or in the financial data above.
+- If the user says a number that differs from your data, DO NOT agree. Say: "Based on the data I have, the number is PKR X. The dashboard may have updated since my last check."
+- NEVER fabricate explanations for numbers you haven't seen in the data.
+- If you don't know something, say so. Do NOT guess or make up answers.
+- Do your own math: total_income - total_expense = balance. State the actual computation.
 ${financialContext}
 
 Additional guidelines:
