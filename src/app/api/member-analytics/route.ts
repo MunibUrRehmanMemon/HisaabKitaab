@@ -25,19 +25,34 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ members: [], accountMode: "individual" });
     }
 
-    // Get all accepted members with profile data
-    const { data: members } = await supabase
+    // Get all accepted members (NO FK join — separate queries)
+    const { data: memberRows } = await supabase
       .from("account_members")
-      .select(
-        "id, role, profile_id, invited_email, profiles(id, email, full_name, avatar_url)"
-      )
+      .select("id, role, profile_id, invited_email")
       .eq("account_id", account.id)
       .eq("accepted", true)
-      .order("created_at", { ascending: true });
+      .order("joined_at", { ascending: true });
 
-    if (!members || members.length === 0) {
+    if (!memberRows || memberRows.length === 0) {
       return NextResponse.json({ members: [], accountMode: account.mode });
     }
+
+    // Fetch profiles separately
+    const profileIds = memberRows.map((m: any) => m.profile_id).filter(Boolean);
+    let profileMap: Record<string, any> = {};
+    if (profileIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, avatar_url")
+        .in("id", profileIds);
+      if (profiles) {
+        for (const p of profiles) {
+          profileMap[p.id] = p;
+        }
+      }
+    }
+
+    const members = memberRows;
 
     // Get this month's date range
     const now = new Date();
@@ -68,7 +83,7 @@ export async function GET(request: NextRequest) {
 
     // Build per-member analytics
     const memberAnalytics = members.map((m: any) => {
-      const prof = m.profiles;
+      const prof = m.profile_id ? profileMap[m.profile_id] : null;
       const profileId = m.profile_id;
 
       // This month

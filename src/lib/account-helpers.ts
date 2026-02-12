@@ -57,7 +57,7 @@ export async function getAccountForUser(
     .select("account_id, role")
     .eq("profile_id", profile.id)
     .eq("accepted", true)
-    .order("created_at", { ascending: true });
+    .order("joined_at", { ascending: true });
 
   if (memberships && memberships.length > 0) {
     // 3. Fetch the actual accounts separately

@@ -30,9 +30,9 @@ export async function GET() {
     // Step 1: Fetch all account_members rows (no FK join)
     const { data: memberRows, error: membersError } = await supabase
       .from("account_members")
-      .select("id, role, accepted, invited_email, spending_limit, created_at, profile_id")
+      .select("id, role, accepted, invited_email, spending_limit, joined_at, profile_id")
       .eq("account_id", account.id)
-      .order("created_at", { ascending: true });
+      .order("joined_at", { ascending: true });
 
     if (membersError) {
       console.error("Error fetching members:", membersError);
@@ -73,7 +73,7 @@ export async function GET() {
         name: prof?.full_name || null,
         avatar: prof?.avatar_url || null,
         spendingLimit: m.spending_limit,
-        joinedAt: m.created_at,
+        joinedAt: m.joined_at,
         profileId: m.profile_id,
       };
     });
