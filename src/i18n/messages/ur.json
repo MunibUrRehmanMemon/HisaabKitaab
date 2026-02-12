@@ -1,0 +1,407 @@
+{
+  "common": {
+    "appName": "حساب کتاب",
+    "currency": "روپے",
+    "loading": "لوڈ ہو رہا ہے...",
+    "error": "خرابی",
+    "success": "کامیابی",
+    "save": "محفوظ کریں",
+    "cancel": "منسوخ کریں",
+    "delete": "حذف کریں",
+    "edit": "تبدیل کریں",
+    "add": "شامل کریں",
+    "search": "تلاش کریں",
+    "filter": "فلٹر",
+    "close": "بند کریں",
+    "confirm": "تصدیق کریں",
+    "back": "واپس",
+    "next": "اگلا",
+    "finish": "ختم کریں",
+    "submit": "جمع کروائیں",
+    "required": "ضروری",
+    "optional": "اختیاری",
+    "selectLanguage": "زبان منتخب کریں"
+  },
+  "auth": {
+    "signIn": "سائن ان",
+    "signUp": "رجسٹر کریں",
+    "signOut": "لاگ آوٹ",
+    "welcomeBack": "خوش آمدید",
+    "getStarted": "شروع کریں",
+    "continueWithGoogle": "گوگل سے جاری رکھیں",
+    "continueWithApple": "ایپل سے جاری رکھیں",
+    "orContinueWith": "یا جاری رکھیں"
+  },
+  "landing": {
+    "hero": {
+      "title": "آپ کا AI مالی مشیر",
+      "subtitle": "خرچے ٹریک کریں، بل سکین کریں، اور ذہین مالی مشورہ حاصل کریں — انگریزی یا اردو میں",
+      "cta": "مفت شروع کریں"
+    },
+    "features": {
+      "title": "اپنے مال کو منظم کرنے کے لیے سب کچھ",
+      "voiceEntry": {
+        "title": "آواز سے لین دین",
+        "description": "اردو یا انگریزی میں اپنی لین دین کو بولیں"
+      },
+      "billScan": {
+        "title": "سمارٹ بل سکینر",
+        "description": "کسی بھی رسید کی تصویر لیں اور AI باقی کام کرے گا"
+      },
+      "advisor": {
+        "title": "AI مالی مشیر",
+        "description": "کسی بھی وقت ذاتی مشورہ حاصل کریں"
+      },
+      "forecast": {
+        "title": "کیش فلو پیشن گوئی",
+        "description": "AI سے اپنے مالی مستقبل کی پیشن گوئی کریں"
+      },
+      "shop": {
+        "title": "دکان کا انتظام",
+        "description": "انوینٹری، فروخت اور منافع کو حقیقی وقت میں ٹریک کریں"
+      },
+      "family": {
+        "title": "خاندانی بجٹ",
+        "description": "اپنے خاندان کے ساتھ مل کر مالیات کا نظم کریں"
+      }
+    },
+    "modes": {
+      "title": "اپنا موڈ منتخب کریں",
+      "individual": {
+        "title": "انفرادی",
+        "description": "ذاتی مالیات کی ٹریکنگ کے لیے بہترین"
+      },
+      "family": {
+        "title": "خاندانی",
+        "description": "اپنے خاندان کے ممبران کے ساتھ بجٹ منظم کریں"
+      },
+      "shop": {
+        "title": "دکان",
+        "description": "چھوٹے کاروبار کے لیے مکمل حل"
+      }
+    },
+    "cta": {
+      "title": "اپنے مالیات کو سنبھالنے کے لیے تیار ہیں؟",
+      "subtitle": "ہزاروں صارفین اپنے پیسے کو زیادہ ہوشیاری سے منظم کر رہے ہیں",
+      "button": "مفت میں شروع کریں"
+    }
+  },
+  "onboarding": {
+    "title": "آئیے شروع کریں",
+    "subtitle": "منتخب کریں کہ آپ حساب کتاب کیسے استعمال کرنا چاہتے ہیں",
+    "mode": {
+      "title": "اپنا موڈ منتخب کریں",
+      "subtitle": "منتخب کریں کہ آپ اپنے مالیات کو کیسے منظم کرنا چاہتے ہیں",
+      "creating": "آپ کا اکاؤنٹ سیٹ اپ ہو رہا ہے...",
+     "individual": {
+        "title": "انفرادی",
+        "description": "اپنی ذاتی آمدنی اور خرچوں کو ٹریک کریں"
+      },
+      "family": {
+        "title": "خاندانی",
+        "description": "اپنے خاندان کے ساتھ مالیات کا نظم کریں"
+      },
+      "shop": {
+        "title": "دکان",
+        "description": "آپ کے کاروبار کے لیے مکمل حل"
+      }
+    },
+    "complete": {
+      "title": "تیار ہے!",
+      "subtitle": "آپ کے ڈیش بورڈ پر منتقل ہو رہے ہیں..."
+    },
+    "individual": {
+      "title": "انفرادی موڈ",
+      "description": "اپنی ذاتی آمدنی اور خرچوں کو ٹریک کریں",
+      "features": [
+        "آواز اور بل سکیننگ",
+        "AI مالی مشیر",
+        "بجٹ کی منصوبہ بندی",
+        "کیش فلو پیشن گوئی"
+      ]
+    },
+    "family": {
+      "title": "خاندانی موڈ",
+      "description": "اپنے خاندان کے ساتھ مالیات کا نظم کریں",
+      "features": [
+        "انفرادی کی تمام خصوصیات",
+        "خاندان کے ممبران کو مدعو کریں",
+        "مشترکہ بجٹ",
+        "فی ممبر ٹریکنگ"
+      ]
+    },
+    "shop": {
+      "title": "دکان موڈ",
+      "description": "آپ کے کاروبار کے لیے مکمل حل",
+      "features": [
+        "انفرادی کی تمام خصوصیات",
+        "انوینٹری کا نظم",
+        "فروخت اور خریداری کی ٹریکنگ",
+        "منافع اور نقصان کا ڈیش بورڈ"
+      ]
+    },
+    "accountName": "ہم آپ کے اکاؤنٹ کو کیا کہیں؟",
+    "accountNamePlaceholder": "میرا اکاؤنٹ",
+    "shopName": "آپ کی دکان کا نام؟",
+    "shopNamePlaceholder": "میری دکان",
+    "shopType": "کس قسم کا کاروبار؟",
+    "shopTypePlaceholder": "گروسری، الیکٹرانکس، وغیرہ",
+    "currency": "کرنسی",
+    "language": "ترجیحی زبان",
+    "monthlyBudget": "ماہانہ بجٹ (اختیاری)",
+    "createAccount": "اکاؤنٹ بنائیں"
+  },
+  "dashboard": {
+    "title": "ڈیش بورڈ",
+    "welcome": "خوش آمدید، {name}",
+    "stats": {
+      "totalIncome": "کل آمدنی",
+      "totalExpenses": "کل اخراجات",
+      "netCashFlow": "خالص نقد بہاؤ",
+      "balance": "موجودہ بیلنس",
+      "thisMonth": "اس ماہ"
+    },
+    "quickActions": "فوری اقدامات",
+    "addTransaction": "لین دین شامل کریں",
+    "scanBill": "بل سکین کریں",
+    "voiceEntry": "آواز سے اندراج",
+    "askAdvisor": "مشیر سے پوچھیں",
+    "recentTransactions": "حالیہ لین دین",
+    "viewAll": "سب دیکھیں",
+    "noTransactions": "ابھی تک کوئی لین دین نہیں",
+    "addFirst": "شروع کرنے کے لیے اپنی پہلی لین دین شامل کریں",
+    "cashFlow": "کیش فلو",
+    "forecast": "30 دن کی پیشن گوئی",
+    "insights": "AI بصیرت",
+    "budgetProgress": "بجٹ کی پیشرفت"
+  },
+  "transactions": {
+    "title": "لین دین",
+    "add": "لین دین شامل کریں",
+    "edit": "لین دین میں ترمیم کریں",
+    "delete": "لین دین حذف کریں",
+    "income": "آمدنی",
+    "expense": "خرچ",
+    "amount": "رقم",
+    "category": "زمرہ",
+    "description": "تفصیل",
+    "notes": "نوٹس",
+    "date": "تاریخ",
+    "paymentMethod": "ادائیگی کا طریقہ",
+    "cash": "نقد",
+    "card": "کارڈ",
+    "bank": "بینک ٹرانسفر",
+    "other": "دیگر",
+    "receipt": "رسید",
+    "uploadReceipt": "رسید اپ لوڈ کریں",
+    "filters": {
+      "all": "تمام",
+      "income": "آمدنی",
+      "expense": "خرچ",
+      "today": "آج",
+      "week": "اس ہفتے",
+      "month": "اس ماہ",
+      "custom": "حسب ضرورت رینج"
+    },
+    "source": {
+      "manual": "دستی",
+      "billScan": "بل سکین",
+      "voice": "آواز سے اندراج",
+      "auto": "خودکار"
+    },
+    "confirmDelete": "کیا آپ واقعی اس لین دین کو حذف کرنا چاہتے ہیں؟",
+    "deleted": "لین دین حذف ہو گئی",
+    "saved": "لین دین محفوظ ہو گئی",
+    "validation": {
+      "amountRequired": "رقم ضروری ہے",
+      "amountPositive": "رقم مثبت ہونی چاہیے",
+      "categoryRequired": "زمرہ ضروری ہے",
+      "dateRequired": "تاریخ ضروری ہے"
+    }
+  },
+  "categories": {
+    "groceries": "گروسری",
+    "utilities": "بجلی/گیس/پانی",
+    "rent": "کرایہ",
+    "transport": "ٹرانسپورٹ",
+    "food": "کھانا/ہوٹل",
+    "healthcare": "صحت/دوائی",
+    "education": "تعلیم",
+    "shopping": "خریداری",
+    "entertainment": "تفریح",
+    "phone": "فون/انٹرنیٹ",
+    "charity": "صدقہ/زکوٰۃ",
+    "personal": "ذاتی",
+    "salary": "تنخواہ",
+    "business": "کاروباری آمدنی",
+    "freelance": "فری لانس",
+    "gift": "تحفہ/مدد",
+    "other": "دیگر"
+  },
+  "billScan": {
+    "title": "بل سکین کریں",
+    "takePhoto": "تصویر لیں",
+    "uploadImage": "تصویر اپ لوڈ کریں",
+    "scanning": "آپ کا بل سکین ہو رہا ہے...",
+    "processing": "AI کے ساتھ پروسیسنگ...",
+    "results": "اسکین شدہ نتائج",
+    "vendor": "دکاندار",
+    "total": "کل رقم",
+    "items": "اشیاء",
+    "confidence": "اعتماد",
+    "warnings": "انتباہات",
+    "saveAll": "تمام اشیاء محفوظ کریں",
+    "editItem": "آئٹم میں ترمیم کریں",
+    "confirmSave": "{count} لین دین محفوظ کریں؟",
+    "saved": "تمام لین دین محفوظ ہو گئیں!",
+    "error": "بل سکین کرنے میں ناکامی۔ دوبارہ کوشش کریں۔",
+    "noItemsFound": "تصویر میں کوئی چیز نہیں ملی"
+  },
+  "voiceEntry": {
+    "title": "آواز سے اندراج",
+    "instructions": "اپنی لین دین قدرتی طور پر بولیں",
+    "examples": "مثالیں: \"گروسری پر 500 روپے لگے\" یا \"تنخواہ 50000 ملی\"",
+    "startRecording": "ریکارڈنگ شروع کریں",
+    "stopRecording": "ریکارڈنگ بند کریں",
+    "listening": "سن رہا ہے...",
+    "processing": "پروسیسنگ...",
+    "transcript": "ٹرانسکرپٹ",
+    "extracted": "نکالی گئی لین دین",
+    "confirm": "تصدیق کریں اور محفوظ کریں",
+    "saved": "لین دین محفوظ ہو گئیں!",
+    "error": "آواز کی پروسیسنگ میں ناکامی۔ دوبارہ کوشش کریں۔",
+    "permissionDenied": "مائیکروفون کی اجازت مسترد کر دی گئی",
+    "notSupported": "آپ کے براؤزر میں آواز کی شناخت تعاون یافتہ نہیں ہے"
+  },
+  "advisor": {
+    "title": "AI مالی مشیر",
+    "subtitle": "اپنے مالیات کے بارے میں کچھ بھی پوچھیں",
+    "placeholder": "سوال پوچھیں...",
+    "examples": "پوچھنے کی کوشش کریں:",
+    "exampleQuestions": [
+      "اس ماہ میری گروسری کا بل زیادہ کیوں ہے؟",
+      "کیا اگلے ہفتے میرے پاس کافی نقد ہوگا؟",
+      "میں مزید پیسے کیسے بچا سکتا ہوں؟",
+      "میرا سب سے بڑا خرچ کا زمرہ کیا ہے؟"
+    ],
+    "thinking": "سوچ رہا ہے...",
+    "typing": "ٹائپ کر رہا ہے...",
+    "error": "جواب حاصل کرنے میں ناکامی۔ دوبارہ کوشش کریں۔",
+    "clearChat": "چیٹ صاف کریں",
+    "newChat": "نئی چیٹ"
+  },
+  "reports": {
+    "title": "رپورٹیں",
+    "weekly": "ہفتہ وار رپورٹ",
+    "monthly": "ماہانہ رپورٹ",
+    "custom": "حسب ضرورت رپورٹ",
+    "generate": "رپورٹ بنائیں",
+    "download": "PDF ڈاؤن لوڈ کریں",
+    "summary": "خلاصہ",
+    "period": "مدت",
+    "totalIncome": "کل آمدنی",
+    "totalExpenses": "کل اخراجات",
+    "netSavings": "خالص بچت",
+    "topCategories": "اعلیٰ زمرے",
+    "insights": "AI بصیرت",
+    "recommendations": "سفارشات"
+  },
+  "shop": {
+    "inventory": "انوینٹری",
+    "sales": "فروخت",
+    "purchases": "خریداری",
+    "profitLoss": "منافع اور نقصان",
+    "creditBook": "خرچہ کتاب",
+    "inventoryEye": "انوینٹری آئی",
+    "addItem": "چیز شامل کریں",
+    "editItem": "چیز میں ترمیم کریں",
+    "itemName": "چیز کا نام",
+    "sku": "SKU",
+    "barcode": "بارکوڈ",
+    "quantity": "تعداد",
+    "unit": "یونٹ",
+    "buyPrice": "خریدنے کی قیمت",
+    "sellPrice": "بیچنے کی قیمت",
+    "reorderLevel": "دوبارہ آرڈر کی سطح",
+    "stockCount": "اسٹاک کی گنتی",
+    "lowStock": "کم اسٹاک",
+    "outOfStock": "اسٹاک ختم",
+    "recordSale": "فروخت ریکارڈ کریں",
+    "recordPurchase": "خریداری ریکارڈ کریں",
+    "customer": "کسٹمر",
+    "supplier": "سپلائر",
+    "isCredit": "ادھار پر (اُدھار)",
+    "profit": "منافع",
+    "loss": "نقصان",
+    "netProfit": "خالص منافع",
+    "revenue": "آمدنی",
+    "cost": "لاگت",
+    "topSelling": "سب سے زیادہ فروخت ہونے والی اشیاء",
+    "creditGiven": "دیا گیا کریڈٹ",
+    "paymentReceived": "موصول ہونے والی ادائیگی",
+    "totalCredit": "کل باقی کریڈٹ",
+    "scanShelf": "شیلف سکین کریں",
+    "counting": "اشیاء گن رہے ہیں...",
+    "detected": "پایا گیا اشیاء",
+    "discrepancies": "تضادات",
+    "restockNow": "ابھی دوبارہ اسٹاک کریں"
+  },
+  "family": {
+    "members": "خاندان کے افراد",
+    "inviteMember": "ممبر کو مدعو کریں",
+    "email": "ای میل ایڈریس",
+    "role": "کردار",
+    "owner": "مالک",
+    "admin": "منتظم",
+    "member": "ممبر",
+    "viewer": "ناظر",
+    "spendingLimit": "خرچ کی حد",
+    "memberSpending": "ممبر کا خرچ",
+    "sharedBudget": "مشترکہ بجٹ",
+    "familyGoals": "خاندانی اہداف",
+    "addGoal": "ہدف شامل کریں",
+    "goalTitle": "ہدف کا عنوان",
+    "targetAmount": "ہدف کی رقم",
+    "deadline": "آخری تاریخ",
+    "progress": "پیشرفت",
+    "inviteSent": "دعوت نامہ بھیج دیا گیا!",
+    "inviteAccepted": "دعوت نامہ قبول کر لیا گیا",
+    "removeMember": "ممبر کو ہٹائیں",
+    "confirmRemove": "اس خاندانی ممبر کو ہٹائیں؟"
+  },
+  "settings": {
+    "title": "ترتیبات",
+    "account": "اکاؤنٹ",
+    "profile": "پروفائل",
+    "preferences": "ترجیحات",
+    "language": "زبان",
+    "currency": "کرنسی",
+    "theme": "تھیم",
+    "light": "روشنی",
+    "dark": "تاریک",
+    "system": "سسٹم",
+    "notifications": "اطلاعات",
+    "emailNotifications": "ای میل اطلاعات",
+    "pushNotifications": "پش اطلاعات",
+    "weeklyReport": "ہفتہ وار رپورٹ",
+    "budgetAlerts": "بجٹ کی الرٹس",
+    "lowStockAlerts": "کم اسٹاک الرٹس",
+    "security": "سیکیورٹی",
+    "changePassword": "پاس ورڈ تبدیل کریں",
+    "twoFactor": "دو عنصری تصدیق",
+    "sessions": "فعال سیشنز",
+    "dangerZone": "خطرے کا علاقہ",
+    "deleteAccount": "اکاؤنٹ حذف کریں",
+    "confirmDelete": "یہ عمل واپس نہیں ہو سکتا",
+    "updated": "ترتیبات اپ ڈیٹ ہو گئیں"
+  },
+  "errors": {
+    "generic": "کچھ غلط ہو گیا",
+    "network": "نیٹ ورک کی خرابی۔ براہ کرم اپنا کنکشن چیک کریں۔",
+    "unauthorized": "آپ کو یہ کارروائی کرنے کی اجازت نہیں ہے",
+    "notFound": "نہیں ملا",
+    "validation": "براہ کرم اپنی ان پٹ چیک کریں",
+    "tryAgain": "دوبارہ کوشش کریں",
+    "goHome": "ہوم پر جائیں"
+  }
+}

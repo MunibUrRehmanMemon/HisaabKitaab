@@ -1,0 +1,407 @@
+{
+  "common": {
+    "appName": "HisaabKitaab",
+    "currency": "PKR",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "filter": "Filter",
+    "close": "Close",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "finish": "Finish",
+    "submit": "Submit",
+    "required": "Required",
+    "optional": "Optional",
+    "selectLanguage": "Select Language"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "signUp": "Sign Up",
+    "signOut": "Sign Out",
+    "welcomeBack": "Welcome Back",
+    "getStarted": "Get Started",
+    "continueWithGoogle": "Continue with Google",
+    "continueWithApple": "Continue with Apple",
+    "orContinueWith": "Or continue with"
+  },
+  "landing": {
+    "hero": {
+      "title": "Your AI-Powered Financial Partner",
+      "subtitle": "Track expenses, scan bills, and get smart financial advice — all in English or Urdu",
+      "cta": "Start Free"
+    },
+    "features": {
+      "title": "Everything You Need to Manage Your Finances",
+      "voiceEntry": {
+        "title": "Voice-to-Ledger",
+        "description": "Simply speak your transactions in English or Urdu"
+      },
+      "billScan": {
+        "title": "Smart Bill Scanner",
+        "description": "Snap a photo of any receipt and let AI do the rest"
+      },
+      "advisor": {
+        "title": "AI Financial Advisor",
+        "description": "Get personalized insights and advice anytime"
+      },
+      "forecast": {
+        "title": "Cash Flow Forecast",
+        "description": "Predict your financial future with AI"
+      },
+      "shop": {
+        "title": "Shop Management",
+        "description": "Track inventory, sales, and profit in real-time"
+      },
+      "family": {
+        "title": "Family Budgets",
+        "description": "Manage finances together with your family"
+      }
+    },
+    "modes": {
+      "title": "Choose Your Mode",
+      "individual": {
+        "title": "Individual",
+        "description": "Perfect for personal finance tracking"
+      },
+      "family": {
+        "title": "Family",
+        "description": "Manage budgets with your family members"
+      },
+      "shop": {
+        "title": "Shop",
+        "description": "Complete solution for small businesses"
+      }
+    },
+    "cta": {
+      "title": "Ready to Take Control of Your Finances?",
+      "subtitle": "Join thousands of users managing their money smarter",
+      "button": "Get Started for Free"
+    }
+  },
+  "onboarding": {
+    "title": "Let's Get Started",
+    "subtitle": "Choose how you want to use HisaabKitaab",
+    "mode": {
+      "title": "Choose Your Mode",
+      "subtitle": "Select how you want to manage your finances",
+      "creating": "Setting up your account...",
+      "individual": {
+        "title": "Individual",
+        "description": "Track your personal income and expenses"
+      },
+      "family": {
+        "title": "Family",
+        "description": "Manage finances with your family"
+      },
+      "shop": {
+        "title": "Shop",
+        "description": "Complete solution for your business"
+      }
+    },
+    "complete": {
+      "title": "All Set!",
+      "subtitle": "Redirecting to your dashboard..."
+    },
+    "individual": {
+      "title": "Individual Mode",
+      "description": "Track your personal income and expenses",
+      "features": [
+        "Voice & bill scanning",
+        "AI financial advisor",
+        "Budget planning",
+        "Cash flow forecast"
+      ]
+    },
+    "family": {
+      "title": "Family Mode",
+      "description": "Manage finances with your family",
+      "features": [
+        "Everything in Individual",
+        "Invite family members",
+        "Shared budgets",
+        "Per-member tracking"
+      ]
+    },
+    "shop": {
+      "title": "Shop Mode",
+      "description": "Complete solution for your business",
+      "features": [
+        "Everything in Individual",
+        "Inventory management",
+        "Sales & purchase tracking",
+        "Profit & loss dashboard"
+      ]
+    },
+    "accountName": "What should we call your account?",
+    "accountNamePlaceholder": "My Account",
+    "shopName": "What's your shop name?",
+    "shopNamePlaceholder": "My Shop",
+    "shopType": "What type of business?",
+    "shopTypePlaceholder": "Grocery, Electronics, etc.",
+    "currency": "Currency",
+    "language": "Preferred Language",
+    "monthlyBudget": "Monthly Budget (Optional)",
+    "createAccount": "Create Account"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome back, {name}",
+    "stats": {
+      "totalIncome": "Total Income",
+      "totalExpenses": "Total Expenses",
+      "netCashFlow": "Net Cash Flow",
+      "balance": "Current Balance",
+      "thisMonth": "This Month"
+    },
+    "quickActions": "Quick Actions",
+    "addTransaction": "Add Transaction",
+    "scanBill": "Scan Bill",
+    "voiceEntry": "Voice Entry",
+    "askAdvisor": "Ask Advisor",
+    "recentTransactions": "Recent Transactions",
+    "viewAll": "View All",
+    "noTransactions": "No transactions yet",
+    "addFirst": "Add your first transaction to get started",
+    "cashFlow": "Cash Flow",
+    "forecast": "30-Day Forecast",
+    "insights": "AI Insights",
+    "budgetProgress": "Budget Progress"
+  },
+  "transactions": {
+    "title": "Transactions",
+    "add": "Add Transaction",
+    "edit": "Edit Transaction",
+    "delete": "Delete Transaction",
+    "income": "Income",
+    "expense": "Expense",
+    "amount": "Amount",
+    "category": "Category",
+    "description": "Description",
+    "notes": "Notes",
+    "date": "Date",
+    "paymentMethod": "Payment Method",
+    "cash": "Cash",
+    "card": "Card",
+    "bank": "Bank Transfer",
+    "other": "Other",
+    "receipt": "Receipt",
+    "uploadReceipt": "Upload Receipt",
+    "filters": {
+      "all": "All",
+      "income": "Income",
+      "expense": "Expense",
+      "today": "Today",
+      "week": "This Week",
+      "month": "This Month",
+      "custom": "Custom Range"
+    },
+    "source": {
+      "manual": "Manual",
+      "billScan": "Bill Scan",
+      "voice": "Voice Entry",
+      "auto": "Automatic"
+    },
+    "confirmDelete": "Are you sure you want to delete this transaction?",
+    "deleted": "Transaction deleted",
+    "saved": "Transaction saved",
+    "validation": {
+      "amountRequired": "Amount is required",
+      "amountPositive": "Amount must be positive",
+      "categoryRequired": "Category is required",
+      "dateRequired": "Date is required"
+    }
+  },
+  "categories": {
+    "groceries": "Groceries",
+    "utilities": "Utilities",
+    "rent": "Rent",
+    "transport": "Transport",
+    "food": "Food & Dining",
+    "healthcare": "Healthcare",
+    "education": "Education",
+    "shopping": "Shopping",
+    "entertainment": "Entertainment",
+    "phone": "Phone/Internet",
+    "charity": "Charity/Zakat",
+    "personal": "Personal",
+    "salary": "Salary",
+    "business": "Business Income",
+    "freelance": "Freelance",
+    "gift": "Gift/Support",
+    "other": "Other"
+  },
+  "billScan": {
+    "title": "Scan Bill",
+    "takePhoto": "Take Photo",
+    "uploadImage": "Upload Image",
+    "scanning": "Scanning your bill...",
+    "processing": "Processing with AI...",
+    "results": "Scanned Results",
+    "vendor": "Vendor",
+    "total": "Total Amount",
+    "items": "Items",
+    "confidence": "Confidence",
+    "warnings": "Warnings",
+    "saveAll": "Save All Items",
+    "editItem": "Edit Item",
+    "confirmSave": "Save {count} transactions?",
+    "saved": "All transactions saved!",
+    "error": "Failed to scan bill. Please try again.",
+    "noItemsFound": "No items detected in the image"
+  },
+  "voiceEntry": {
+    "title": "Voice Entry",
+    "instructions": "Speak your transaction naturally",
+    "examples": "Examples: \"Bought groceries for 500 rupees\" or \"Received salary 50000\"",
+    "startRecording": "Start Recording",
+    "stopRecording": "Stop Recording",
+    "listening": "Listening...",
+    "processing": "Processing...",
+    "transcript": "Transcript",
+    "extracted": "Extracted Transactions",
+    "confirm": "Confirm & Save",
+    "saved": "Transactions saved!",
+    "error": "Failed to process voice. Please try again.",
+    "permissionDenied": "Microphone permission denied",
+    "notSupported": "Voice recognition not supported in your browser"
+  },
+  "advisor": {
+    "title": "AI Financial Advisor",
+    "subtitle": "Ask me anything about your finances",
+    "placeholder": "Ask a question...",
+    "examples": "Try asking:",
+    "exampleQuestions": [
+      "Why is my grocery bill high this month?",
+      "Will I have enough cash next week?",
+      "How can I save more money?",
+      "What's my biggest expense category?"
+    ],
+    "thinking": "Thinking...",
+    "typing": "Typing...",
+    "error": "Failed to get response. Please try again.",
+    "clearChat": "Clear Chat",
+    "newChat": "New Chat"
+  },
+  "reports": {
+    "title": "Reports",
+    "weekly": "Weekly Report",
+    "monthly": "Monthly Report",
+    "custom": "Custom Report",
+    "generate": "Generate Report",
+    "download": "Download PDF",
+    "summary": "Summary",
+    "period": "Period",
+    "totalIncome": "Total Income",
+    "totalExpenses": "Total Expenses",
+    "netSavings": "Net Savings",
+    "topCategories": "Top Categories",
+    "insights": "AI Insights",
+    "recommendations": "Recommendations"
+  },
+  "shop": {
+    "inventory": "Inventory",
+    "sales": "Sales",
+    "purchases": "Purchases",
+    "profitLoss": "Profit & Loss",
+    "creditBook": "Credit Book",
+    "inventoryEye": "Inventory Eye",
+    "addItem": "Add Item",
+    "editItem": "Edit Item",
+    "itemName": "Item Name",
+    "sku": "SKU",
+    "barcode": "Barcode",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "buyPrice": "Buy Price",
+    "sellPrice": "Sell Price",
+    "reorderLevel": "Reorder Level",
+    "stockCount": "Stock Count",
+    "lowStock": "Low Stock",
+    "outOfStock": "Out of Stock",
+    "recordSale": "Record Sale",
+    "recordPurchase": "Record Purchase",
+    "customer": "Customer",
+    "supplier": "Supplier",
+    "isCredit": "On Credit (Udhar)",
+    "profit": "Profit",
+    "loss": "Loss",
+    "netProfit": "Net Profit",
+    "revenue": "Revenue",
+    "cost": "Cost",
+    "topSelling": "Top Selling Items",
+    "creditGiven": "Credit Given",
+    "paymentReceived": "Payment Received",
+    "totalCredit": "Total Outstanding Credit",
+    "scanShelf": "Scan Shelf",
+    "counting": "Counting items...",
+    "detected": "Detected Items",
+    "discrepancies": "Discrepancies",
+    "restockNow": "Restock Now"
+  },
+  "family": {
+    "members": "Family Members",
+    "inviteMember": "Invite Member",
+    "email": "Email Address",
+    "role": "Role",
+    "owner": "Owner",
+    "admin": "Admin",
+    "member": "Member",
+    "viewer": "Viewer",
+    "spendingLimit": "Spending Limit",
+    "memberSpending": "Member Spending",
+    "sharedBudget": "Shared Budget",
+    "familyGoals": "Family Goals",
+    "addGoal": "Add Goal",
+    "goalTitle": "Goal Title",
+    "targetAmount": "Target Amount",
+    "deadline": "Deadline",
+    "progress": "Progress",
+    "inviteSent": "Invitation sent!",
+    "inviteAccepted": "Invitation accepted",
+    "removeMember": "Remove Member",
+    "confirmRemove": "Remove this family member?"
+  },
+  "settings": {
+    "title": "Settings",
+    "account": "Account",
+    "profile": "Profile",
+    "preferences": "Preferences",
+    "language": "Language",
+    "currency": "Currency",
+    "theme": "Theme",
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "notifications": "Notifications",
+    "emailNotifications": "Email Notifications",
+    "pushNotifications": "Push Notifications",
+    "weeklyReport": "Weekly Report",
+    "budgetAlerts": "Budget Alerts",
+    "lowStockAlerts": "Low Stock Alerts",
+    "security": "Security",
+    "changePassword": "Change Password",
+    "twoFactor": "Two-Factor Authentication",
+    "sessions": "Active Sessions",
+    "dangerZone": "Danger Zone",
+    "deleteAccount": "Delete Account",
+    "confirmDelete": "This action cannot be undone",
+    "updated": "Settings updated"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network error. Please check your connection.",
+    "unauthorized": "You are not authorized to perform this action",
+    "notFound": "Not found",
+    "validation": "Please check your input",
+    "tryAgain": "Try Again",
+    "goHome": "Go Home"
+  }
+}

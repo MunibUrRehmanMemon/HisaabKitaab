@@ -1,0 +1,612 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useTranslations } from "@/i18n/provider";
+import { HisaabKitaabLogo } from "@/components/Logo";
+import { UserMenu } from "@/components/UserMenu";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  ArrowLeft,
+  Download,
+  FileText,
+  Calendar,
+  TrendingUp,
+  TrendingDown,
+  Loader2,
+  FileDown,
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/stores/useLanguage";
+
+type PeriodType = "weekly" | "monthly" | "custom";
+
+interface StatementData {
+  statement: {
+    accountName: string;
+    userName: string;
+    period: { start: string; end: string; type: string };
+    generatedAt: string;
+  };
+  summary: {
+    totalIncome: number;
+    totalExpenses: number;
+    netCashFlow: number;
+    transactionCount: number;
+    categoryBreakdown: Record<string, { income: number; expense: number }>;
+  };
+  transactions: {
+    date: string;
+    type: string;
+    amount: number;
+    category: string;
+    categoryUr: string;
+    description: string;
+    source: string;
+  }[];
+}
+
+function formatPKR(amount: number): string {
+  return `PKR ${amount.toLocaleString("en-PK")}`;
+}
+
+async function generatePDF(data: StatementData) {
+  const { default: jsPDF } = await import("jspdf");
+  const { default: autoTable } = await import("jspdf-autotable");
+
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+
+  // Header
+  doc.setFillColor(15, 118, 110); // #0F766E
+  doc.rect(0, 0, pageWidth, 40, "F");
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(24);
+  doc.text("HisaabKitaab", 14, 20);
+  doc.setFontSize(10);
+  doc.text("Account Statement", 14, 28);
+  doc.text(
+    `${data.statement.period.start}  to  ${data.statement.period.end}`,
+    14,
+    34
+  );
+
+  // Account info
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
+  let y = 50;
+  doc.text(`Account: ${data.statement.accountName}`, 14, y);
+  doc.text(`Name: ${data.statement.userName}`, 14, y + 6);
+  doc.text(
+    `Generated: ${new Date(data.statement.generatedAt).toLocaleDateString("en-PK")}`,
+    14,
+    y + 12
+  );
+
+  // Summary box
+  y = 72;
+  doc.setDrawColor(200, 200, 200);
+  doc.setFillColor(248, 250, 252); // #F8FAFC
+  doc.roundedRect(14, y, pageWidth - 28, 30, 3, 3, "FD");
+
+  doc.setFontSize(9);
+  doc.setTextColor(100, 100, 100);
+  const colW = (pageWidth - 28) / 4;
+  const labels = ["Income", "Expenses", "Net Cash Flow", "Transactions"];
+  const values = [
+    formatPKR(data.summary.totalIncome),
+    formatPKR(data.summary.totalExpenses),
+    formatPKR(data.summary.netCashFlow),
+    String(data.summary.transactionCount),
+  ];
+  const colors: [number, number, number][] = [
+    [22, 163, 74],
+    [220, 38, 38],
+    data.summary.netCashFlow >= 0 ? [22, 163, 74] : [220, 38, 38],
+    [15, 118, 110],
+  ];
+
+  for (let i = 0; i < 4; i++) {
+    const x = 14 + colW * i + 4;
+    doc.setTextColor(100, 100, 100);
+    doc.text(labels[i], x, y + 10);
+    doc.setFontSize(12);
+    doc.setTextColor(...colors[i]);
+    doc.text(values[i], x, y + 20);
+    doc.setFontSize(9);
+  }
+
+  // Category Breakdown
+  y = 112;
+  const catEntries = Object.entries(data.summary.categoryBreakdown);
+  if (catEntries.length > 0) {
+    doc.setTextColor(0, 0, 0);
+    doc.setFontSize(13);
+    doc.text("Category Breakdown", 14, y);
+    y += 4;
+
+    autoTable(doc, {
+      startY: y,
+      head: [["Category", "Income (PKR)", "Expenses (PKR)"]],
+      body: catEntries
+        .sort(([, a], [, b]) => b.income + b.expense - (a.income + a.expense))
+        .map(([cat, amounts]) => [
+          cat,
+          amounts.income > 0 ? amounts.income.toLocaleString("en-PK") : "-",
+          amounts.expense > 0 ? amounts.expense.toLocaleString("en-PK") : "-",
+        ]),
+      theme: "grid",
+      headStyles: { fillColor: [15, 118, 110] },
+      styles: { fontSize: 9 },
+      margin: { left: 14, right: 14 },
+    });
+
+    y = (doc as any).lastAutoTable.finalY + 10;
+  }
+
+  // Transaction table
+  doc.setTextColor(0, 0, 0);
+  doc.setFontSize(13);
+  doc.text(`Transactions (${data.transactions.length})`, 14, y);
+  y += 4;
+
+  if (data.transactions.length > 0) {
+    autoTable(doc, {
+      startY: y,
+      head: [["Date", "Type", "Category", "Description", "Source", "Amount (PKR)"]],
+      body: data.transactions.map((tx) => [
+        tx.date,
+        tx.type.charAt(0).toUpperCase() + tx.type.slice(1),
+        tx.category,
+        tx.description || "-",
+        tx.source,
+        `${tx.type === "income" ? "+" : "-"}${tx.amount.toLocaleString("en-PK")}`,
+      ]),
+      theme: "striped",
+      headStyles: { fillColor: [15, 118, 110] },
+      styles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 24 },
+        1: { cellWidth: 18 },
+        5: { halign: "right", cellWidth: 28 },
+      },
+      margin: { left: 14, right: 14 },
+      didParseCell: (hookData: any) => {
+        if (hookData.section === "body" && hookData.column.index === 5) {
+          const text = hookData.cell.raw as string;
+          if (text.startsWith("+")) {
+            hookData.cell.styles.textColor = [22, 163, 74];
+          } else {
+            hookData.cell.styles.textColor = [220, 38, 38];
+          }
+          hookData.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+  }
+
+  // Footer
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text(
+      `HisaabKitaab Statement - Page ${i} of ${pageCount}`,
+      pageWidth / 2,
+      doc.internal.pageSize.getHeight() - 8,
+      { align: "center" }
+    );
+  }
+
+  // Download
+  const filename = `HisaabKitaab_Statement_${data.statement.period.start}_${data.statement.period.end}.pdf`;
+  doc.save(filename);
+}
+
+export default function ExportStatementPage() {
+  const router = useRouter();
+  const t = useTranslations();
+  const { toast } = useToast();
+  const { language } = useLanguage();
+
+  const [period, setPeriod] = useState<PeriodType>("monthly");
+  const [customStart, setCustomStart] = useState("");
+  const [customEnd, setCustomEnd] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [statementData, setStatementData] = useState<StatementData | null>(null);
+
+  const fetchStatement = async (format: "json" | "csv" = "json") => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({ period, format });
+      if (period === "custom") {
+        if (!customStart || !customEnd) {
+          toast({
+            title: "Missing dates",
+            description: "Please select both start and end dates.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+        params.set("start", customStart);
+        params.set("end", customEnd);
+      }
+
+      const response = await fetch(`/api/export-statement?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error("Failed to fetch statement");
+      }
+
+      if (format === "csv") {
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `HisaabKitaab_Statement.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        toast({
+          title: "CSV Downloaded!",
+          description: "Statement exported as CSV file.",
+        });
+      } else {
+        const data: StatementData = await response.json();
+        setStatementData(data);
+        toast({
+          title: "Statement generated!",
+          description: `${data.summary.transactionCount} transactions found.`,
+        });
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({
+        title: "Export failed",
+        description: "Could not generate statement. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        <div className="container mx-auto max-w-7xl flex h-14 sm:h-16 items-center justify-between px-4 sm:px-6">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 sm:h-9 sm:w-9"
+              onClick={() => router.push("/dashboard")}
+            >
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+            </Button>
+            <HisaabKitaabLogo className="h-8 w-8 sm:h-10 sm:w-10" />
+            <div className="hidden sm:block">
+              <h1 className="text-lg sm:text-xl font-bold text-primary">
+                {t("common.appName")}
+              </h1>
+              <p className="text-xs text-muted-foreground">حساب کتاب</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <LanguageToggle />
+            <UserMenu />
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto max-w-4xl py-6 sm:py-8 px-4 sm:px-6">
+        <div className="mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+            <FileText className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+            Export Statement
+          </h2>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">
+            Generate and download your account statement
+          </p>
+        </div>
+
+        {/* Period Selection */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Select Period
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              <Button
+                variant={period === "weekly" ? "default" : "outline"}
+                onClick={() => setPeriod("weekly")}
+                className="w-full"
+              >
+                This Week
+              </Button>
+              <Button
+                variant={period === "monthly" ? "default" : "outline"}
+                onClick={() => setPeriod("monthly")}
+                className="w-full"
+              >
+                This Month
+              </Button>
+              <Button
+                variant={period === "custom" ? "default" : "outline"}
+                onClick={() => setPeriod("custom")}
+                className="w-full"
+              >
+                Custom
+              </Button>
+            </div>
+
+            {period === "custom" && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    Start Date
+                  </label>
+                  <Input
+                    type="date"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium mb-1 block">
+                    End Date
+                  </label>
+                  <Input
+                    type="date"
+                    value={customEnd}
+                    onChange={(e) => setCustomEnd(e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <Button
+                onClick={() => fetchStatement("json")}
+                disabled={isLoading}
+                className="flex-1"
+              >
+                {isLoading ? (
+                  <Loader2 className="me-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <FileText className="me-2 h-4 w-4" />
+                )}
+                View Statement
+              </Button>
+              <Button
+                onClick={() => fetchStatement("csv")}
+                disabled={isLoading}
+                variant="outline"
+              >
+                <Download className="me-2 h-4 w-4" />
+                CSV
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (!statementData) {
+                    // Fetch first, then generate PDF
+                    setIsLoading(true);
+                    try {
+                      const params = new URLSearchParams({ period, format: "json" });
+                      if (period === "custom") {
+                        if (!customStart || !customEnd) {
+                          toast({
+                            title: "Missing dates",
+                            description: "Please select both start and end dates.",
+                            variant: "destructive",
+                          });
+                          setIsLoading(false);
+                          return;
+                        }
+                        params.set("start", customStart);
+                        params.set("end", customEnd);
+                      }
+                      const response = await fetch(`/api/export-statement?${params.toString()}`);
+                      if (!response.ok) throw new Error("Failed to fetch statement");
+                      const data: StatementData = await response.json();
+                      setStatementData(data);
+                      await generatePDF(data);
+                      toast({ title: "PDF Downloaded!", description: "Statement exported as PDF file." });
+                    } catch (error) {
+                      console.error("PDF export error:", error);
+                      toast({ title: "Export failed", description: "Could not generate PDF.", variant: "destructive" });
+                    } finally {
+                      setIsLoading(false);
+                    }
+                  } else {
+                    await generatePDF(statementData);
+                    toast({ title: "PDF Downloaded!", description: "Statement exported as PDF file." });
+                  }
+                }}
+                disabled={isLoading}
+                variant="outline"
+              >
+                <FileDown className="me-2 h-4 w-4" />
+                PDF
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Statement Display */}
+        {statementData && (
+          <>
+            {/* Summary Cards */}
+            <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4 mb-6">
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted-foreground">Income</span>
+                    <TrendingUp className="h-3 w-3 text-green-600" />
+                  </div>
+                  <p className="text-lg font-bold text-green-600">
+                    {formatPKR(statementData.summary.totalIncome)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted-foreground">Expenses</span>
+                    <TrendingDown className="h-3 w-3 text-red-600" />
+                  </div>
+                  <p className="text-lg font-bold text-red-600">
+                    {formatPKR(statementData.summary.totalExpenses)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <span className="text-xs text-muted-foreground">Net</span>
+                  <p
+                    className={`text-lg font-bold ${
+                      statementData.summary.netCashFlow >= 0
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {formatPKR(statementData.summary.netCashFlow)}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="pt-4 pb-4">
+                  <span className="text-xs text-muted-foreground">
+                    Transactions
+                  </span>
+                  <p className="text-lg font-bold text-primary">
+                    {statementData.summary.transactionCount}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Category Breakdown */}
+            {Object.keys(statementData.summary.categoryBreakdown).length > 0 && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle className="text-lg">Category Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {Object.entries(statementData.summary.categoryBreakdown)
+                      .sort(
+                        ([, a], [, b]) =>
+                          b.income + b.expense - (a.income + a.expense)
+                      )
+                      .map(([category, amounts]) => (
+                        <div
+                          key={category}
+                          className="flex items-center justify-between p-2 rounded-lg bg-accent/50"
+                        >
+                          <span className="text-sm font-medium">{category}</span>
+                          <div className="flex gap-4 text-sm">
+                            {amounts.income > 0 && (
+                              <span className="text-green-600">
+                                +{formatPKR(amounts.income)}
+                              </span>
+                            )}
+                            {amounts.expense > 0 && (
+                              <span className="text-red-600">
+                                -{formatPKR(amounts.expense)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Transaction List */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">
+                  Transactions ({statementData.transactions.length})
+                </CardTitle>
+                <span className="text-xs text-muted-foreground">
+                  {statementData.statement.period.start} — {statementData.statement.period.end}
+                </span>
+              </CardHeader>
+              <CardContent>
+                {statementData.transactions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No transactions found for this period.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {statementData.transactions.map((tx, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 rounded-lg bg-accent/50 hover:bg-accent transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`h-8 w-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${
+                              tx.type === "income"
+                                ? "bg-green-600"
+                                : "bg-red-500"
+                            }`}
+                          >
+                            {tx.type === "income" ? "+" : "-"}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">
+                              {language === "ur" ? tx.categoryUr : tx.category}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {tx.date}
+                              {tx.description && ` — ${tx.description}`}
+                              {tx.source !== "manual" && (
+                                <span className="ms-1">
+                                  {tx.source === "voice"
+                                    ? "🎤"
+                                    : tx.source === "auto"
+                                    ? "🤖"
+                                    : tx.source === "bill_scan"
+                                    ? "📷"
+                                    : ""}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <span
+                          className={`text-sm font-bold ${
+                            tx.type === "income"
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }`}
+                        >
+                          {tx.type === "income" ? "+" : "-"}
+                          {formatPKR(tx.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </>
+        )}
+      </main>
+    </div>
+  );
+}
