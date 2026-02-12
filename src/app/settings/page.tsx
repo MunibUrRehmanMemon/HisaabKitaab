@@ -89,8 +89,8 @@ export default function SettingsPage() {
       const data = await res.json();
       if (res.ok) {
         setMemberSuccess(data.autoAccepted
-          ? `${inviteEmail} added and linked automatically!`
-          : `Invitation sent to ${inviteEmail}`);
+          ? `✅ ${inviteEmail} added and linked to your family account!`
+          : `✅ ${inviteEmail} saved! They'll be automatically linked when they sign up on HisaabKitaab with this email.`);
         setInviteEmail("");
         fetchMembers();
       } else {
@@ -233,7 +233,7 @@ export default function SettingsPage() {
               <div className="space-y-3">
                 <Label className="text-sm font-medium">Invite a Member</Label>
                 <p className="text-xs text-muted-foreground">
-                  Add family members or shopkeepers by email. They&apos;ll see shared transactions when they log in.
+                  Add family members by their email. If they already have a HisaabKitaab account, they&apos;ll be linked instantly. Otherwise, they&apos;ll be linked when they sign up with that email.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
@@ -321,8 +321,8 @@ export default function SettingsPage() {
                             {member.role}
                           </span>
                           {!member.accepted && (
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                              pending
+                            <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" title="Will be linked when they sign up on HisaabKitaab">
+                              awaiting signup
                             </span>
                           )}
                           {member.role !== "owner" && (
