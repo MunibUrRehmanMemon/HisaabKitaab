@@ -685,7 +685,7 @@ export default function DashboardPage() {
                 </CardContent>
               </Card>
 
-              {/* Member Share Pie Chart */}
+              {/* Member Share Pie Chart - Expenses */}
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-medium">Who Spent Most? (This Month)</CardTitle>
@@ -726,6 +726,57 @@ export default function DashboardPage() {
                           formatter={(value: any) => [
                             `PKR ${Number(value || 0).toLocaleString("en-PK")}`,
                             "Expenses",
+                          ]}
+                          contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb" }}
+                        />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Member Share Pie Chart - Income */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium">Who Earns Most? (This Month)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-64">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={memberAnalytics.members
+                            .filter((m) => m.month.income > 0)
+                            .map((m) => ({
+                              name: m.name.split(" ")[0],
+                              value: m.month.income,
+                            }))}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={50}
+                          outerRadius={85}
+                          paddingAngle={3}
+                          dataKey="value"
+                          nameKey="name"
+                          label={({ name, percent }: any) =>
+                            `${name} ${((percent || 0) * 100).toFixed(0)}%`
+                          }
+                          labelLine={false}
+                        >
+                          {memberAnalytics.members
+                            .filter((m) => m.month.income > 0)
+                            .map((_, index) => (
+                              <Cell
+                                key={`income-cell-${index}`}
+                                fill={CHART_COLORS[(index + 2) % CHART_COLORS.length]}
+                              />
+                            ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(value: any) => [
+                            `PKR ${Number(value || 0).toLocaleString("en-PK")}`,
+                            "Income",
                           ]}
                           contentStyle={{ borderRadius: "8px", border: "1px solid #e5e7eb" }}
                         />

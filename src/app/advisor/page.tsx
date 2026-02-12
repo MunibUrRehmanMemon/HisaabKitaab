@@ -34,8 +34,8 @@ export default function AdvisorPage() {
       role: "assistant",
       content:
         language === "ur"
-          ? "السلام علیکم! میں آپ کا مالی مشیر ہوں۔ میں آپ کی بچت، بجٹ، اور سرمایہ کاری میں مدد کر سکتا ہوں۔"
-          : "Hello! I'm your AI financial advisor. I can help you with budgeting, savings, investments, and financial planning. What would you like to know?",
+          ? "السلام علیکم! میں آپ کا AI مالی مشیر ہوں۔ مجھے آپ کی تمام ٹرانزیکشنز اور فیملی ممبرز کا ڈیٹا دستیاب ہے۔ آپ مجھ سے پوچھ سکتے ہیں کہ سب سے زیادہ خرچ کس چیز پر ہوا، کون زیادہ خرچ کرتا ہے، یا کوئی بھی مالی سوال!"
+          : "Hello! I'm your AI financial advisor. I have access to all your transactions, family members, and spending data. Ask me anything — like what you're spending the most on, who spends the most, your last transaction, or any financial question!",
       timestamp: new Date(),
     },
   ]);
@@ -51,12 +51,23 @@ export default function AdvisorPage() {
     scrollToBottom();
   }, [messages]);
 
-  const suggestedQuestions = [
-    "How can I save more money?",
-    "What's a good budget for groceries?",
-    "Should I invest in mutual funds?",
-    "How to reduce my expenses?",
-  ];
+  const suggestedQuestions = language === "ur"
+    ? [
+        "ہماری فیملی سب سے زیادہ کس چیز پر خرچ کرتی ہے؟",
+        "آخری ٹرانزیکشن کیا تھی؟",
+        "کون سب سے زیادہ خرچ کرتا ہے؟",
+        "ہم کتنی بچت کر رہے ہیں؟",
+        "اس مہینے کا مالی خلاصہ دکھاؤ",
+        "بجٹ بنانے میں مدد کرو",
+      ]
+    : [
+        "What is our family spending the most on?",
+        "What was the last transaction?",
+        "Who spends the most in our family?",
+        "How much have we saved this month?",
+        "Show me our complete financial summary",
+        "Help me create a budget plan",
+      ];
 
   const handleSendMessage = async (messageText?: string) => {
     const textToSend = messageText || input.trim();
@@ -248,7 +259,7 @@ export default function AdvisorPage() {
             <p className="text-sm text-muted-foreground mb-2">
               Suggested questions:
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {suggestedQuestions.map((question, index) => (
                 <Button
                   key={index}

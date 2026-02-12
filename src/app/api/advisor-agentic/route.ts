@@ -47,25 +47,55 @@ const tools: Tool[] = [
   },
   {
     name: "get_recent_transactions",
-    description: "Get user's recent transactions to provide context or analysis. Use this when user asks about their spending, recent purchases, or wants to see their activity.",
+    description: "Get user's recent transactions with details of which family member added each one. Use this when user asks about their spending, recent purchases, last transactions, or wants to see activity.",
     input_schema: {
       type: "object",
       properties: {
         limit: {
           type: "number",
-          description: "Number of transactions to fetch (default 10)"
+          description: "Number of transactions to fetch (default 10, max 50)"
         },
         type: {
           type: "string",
           enum: ["income", "expense", "all"],
           description: "Filter by transaction type"
+        },
+        category: {
+          type: "string",
+          description: "Filter by category name (optional, e.g. 'Groceries', 'Transport')"
         }
       }
     }
   },
   {
     name: "get_spending_summary",
-    description: "Get a summary of user's spending by category. Use when user asks about budget, spending patterns, or where their money goes.",
+    description: "Get a complete summary of spending AND income by category, with per-member breakdown. Use when user asks about budget, spending patterns, savings, where money goes, who spends most, etc.",
+    input_schema: {
+      type: "object",
+      properties: {
+        days: {
+          type: "number",
+          description: "Number of days to look back (default 30)"
+        }
+      }
+    }
+  },
+  {
+    name: "get_financial_overview",
+    description: "Get a complete financial overview: total income, expenses, net balance, family members, top categories, and recent activity. Use this as the FIRST tool when user asks general questions like 'how are my finances?', 'give me a summary', 'how much have I saved?', or any broad question about their financial health.",
+    input_schema: {
+      type: "object",
+      properties: {
+        days: {
+          type: "number",
+          description: "Number of days to look back (default 30)"
+        }
+      }
+    }
+  },
+  {
+    name: "get_member_spending",
+    description: "Get a per-member breakdown of spending and income. Use when user asks 'who spends the most?', 'who earns the most?', 'how much did [member] spend?', or any comparison between family members.",
     input_schema: {
       type: "object",
       properties: {
@@ -87,13 +117,43 @@ async function executeToolCall(toolName: string, toolInput: any, userId: string)
     return { error: `Setup failed: ${setupError || "Unknown error"}` };
   }
 
+  // Helper: build profile name map for member attribution
+  async function buildMemberMap() {
+    const { data: memberRows } = await supabase
+      .from("account_members")
+      .select("profile_id, role, invited_email, accepted")
+      .eq("account_id", account!.id);
+
+    const memberProfileIds = (memberRows || []).map((m: any) => m.profile_id).filter(Boolean);
+    const profileMap: Record<string, string> = {};
+
+    if (memberProfileIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", memberProfileIds);
+      if (profiles) {
+        for (const p of profiles) {
+          profileMap[p.id] = p.full_name || p.email || "Unknown";
+        }
+      }
+    }
+
+    const members = (memberRows || []).map((m: any) => ({
+      name: m.profile_id ? (profileMap[m.profile_id] || "Unknown") : (m.invited_email || "Pending"),
+      role: m.role,
+      accepted: m.accepted,
+      profileId: m.profile_id,
+    }));
+
+    return { members, profileMap };
+  }
+
   switch (toolName) {
     case "create_transaction": {
-      // Look up the category_id from the categories table by matching name
       let categoryId: string | null = null;
       const categoryName = toolInput.category || "Other";
       
-      // Try to find matching default category (case-insensitive partial match)
       const { data: categories } = await supabase
         .from("categories")
         .select("id, name_en")
@@ -130,12 +190,14 @@ async function executeToolCall(toolName: string, toolInput: any, userId: string)
     }
 
     case "get_recent_transactions": {
+      const { profileMap } = await buildMemberMap();
+
       let query = supabase
         .from("transactions")
-        .select("type, amount, category_id, categories(name_en), description_en, transaction_date")
+        .select("type, amount, category_id, categories(name_en), description_en, transaction_date, source, added_by")
         .eq("account_id", account.id)
         .order("transaction_date", { ascending: false })
-        .limit(toolInput.limit || 10);
+        .limit(Math.min(toolInput.limit || 10, 50));
 
       if (toolInput.type && toolInput.type !== "all") {
         query = query.eq("type", toolInput.type);
@@ -143,40 +205,71 @@ async function executeToolCall(toolName: string, toolInput: any, userId: string)
 
       const { data: transactions } = await query;
 
+      // Filter by category if specified
+      let filtered = transactions || [];
+      if (toolInput.category) {
+        const catLower = toolInput.category.toLowerCase();
+        filtered = filtered.filter((t: any) =>
+          (t.categories?.name_en || "Other").toLowerCase().includes(catLower)
+        );
+      }
+
       return {
         success: true,
-        transactions: (transactions || []).map((t: any) => ({
+        transactions: filtered.map((t: any) => ({
           type: t.type,
           amount: t.amount,
           category: t.categories?.name_en || "Other",
-          description: t.description_en,
-          transaction_date: t.transaction_date,
+          description: t.description_en || "",
+          date: t.transaction_date,
+          addedBy: t.added_by ? (profileMap[t.added_by] || profile.full_name || "User") : (profile.full_name || "User"),
+          source: t.source || "manual",
         })),
-        count: transactions?.length || 0
+        count: filtered.length
       };
     }
 
     case "get_spending_summary": {
+      const { members, profileMap } = await buildMemberMap();
       const daysAgo = new Date();
       daysAgo.setDate(daysAgo.getDate() - (toolInput.days || 30));
 
       const { data: summaryData } = await supabase
         .from("transactions")
-        .select("type, amount, category_id, categories(name_en)")
+        .select("type, amount, category_id, categories(name_en), added_by")
         .eq("account_id", account.id)
         .gte("transaction_date", daysAgo.toISOString().split("T")[0]);
 
       const expenses = summaryData?.filter((t: any) => t.type === "expense") || [];
       const income = summaryData?.filter((t: any) => t.type === "income") || [];
 
-      const totalExpense = expenses.reduce((sum: number, t: any) => sum + t.amount, 0);
-      const totalIncome = income.reduce((sum: number, t: any) => sum + t.amount, 0);
+      const totalExpense = expenses.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
+      const totalIncome = income.reduce((sum: number, t: any) => sum + Number(t.amount), 0);
 
-      const categoryBreakdown = expenses.reduce((acc: any, t: any) => {
-        const catName = t.categories?.name_en || "Other";
-        acc[catName] = (acc[catName] || 0) + t.amount;
-        return acc;
-      }, {});
+      // Expense category breakdown
+      const expenseByCategory: Record<string, number> = {};
+      for (const t of expenses) {
+        const catName = (t as any).categories?.name_en || "Other";
+        expenseByCategory[catName] = (expenseByCategory[catName] || 0) + Number(t.amount);
+      }
+
+      // Income category breakdown
+      const incomeByCategory: Record<string, number> = {};
+      for (const t of income) {
+        const catName = (t as any).categories?.name_en || "Other";
+        incomeByCategory[catName] = (incomeByCategory[catName] || 0) + Number(t.amount);
+      }
+
+      // Per-member breakdown
+      const memberSpending: Record<string, { expense: number; income: number; name: string }> = {};
+      for (const t of summaryData || []) {
+        const memberId = (t as any).added_by || "unknown";
+        const memberName = memberId !== "unknown" ? (profileMap[memberId] || "Unknown") : (profile.full_name || "User");
+        if (!memberSpending[memberName]) {
+          memberSpending[memberName] = { expense: 0, income: 0, name: memberName };
+        }
+        memberSpending[memberName][t.type as "income" | "expense"] += Number(t.amount);
+      }
 
       return {
         success: true,
@@ -184,10 +277,176 @@ async function executeToolCall(toolName: string, toolInput: any, userId: string)
           period_days: toolInput.days || 30,
           total_expense: totalExpense,
           total_income: totalIncome,
-          net: totalIncome - totalExpense,
-          category_breakdown: categoryBreakdown,
-          transaction_count: summaryData?.length || 0
+          net_savings: totalIncome - totalExpense,
+          transaction_count: summaryData?.length || 0,
+          expense_by_category: expenseByCategory,
+          income_by_category: incomeByCategory,
+          member_breakdown: Object.values(memberSpending),
+          family_members: members.map((m) => `${m.name} (${m.role})`),
         }
+      };
+    }
+
+    case "get_financial_overview": {
+      const { members, profileMap } = await buildMemberMap();
+      const daysAgo = new Date();
+      daysAgo.setDate(daysAgo.getDate() - (toolInput.days || 30));
+
+      const { data: allTx } = await supabase
+        .from("transactions")
+        .select("type, amount, category_id, categories(name_en), description_en, transaction_date, added_by")
+        .eq("account_id", account.id)
+        .gte("transaction_date", daysAgo.toISOString().split("T")[0])
+        .order("transaction_date", { ascending: false });
+
+      const txList = allTx || [];
+      const totalIncome = txList.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+      const totalExpense = txList.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+
+      // Top expense categories
+      const catTotals: Record<string, number> = {};
+      for (const t of txList.filter((t: any) => t.type === "expense")) {
+        const cat = (t as any).categories?.name_en || "Other";
+        catTotals[cat] = (catTotals[cat] || 0) + Number(t.amount);
+      }
+      const topExpenseCategories = Object.entries(catTotals)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
+        .slice(0, 5)
+        .map(([cat, amt]) => ({ category: cat, amount: amt }));
+
+      // Top income categories
+      const incomeCatTotals: Record<string, number> = {};
+      for (const t of txList.filter((t: any) => t.type === "income")) {
+        const cat = (t as any).categories?.name_en || "Other";
+        incomeCatTotals[cat] = (incomeCatTotals[cat] || 0) + Number(t.amount);
+      }
+      const topIncomeCategories = Object.entries(incomeCatTotals)
+        .sort(([, a], [, b]) => (b as number) - (a as number))
+        .slice(0, 5)
+        .map(([cat, amt]) => ({ category: cat, amount: amt }));
+
+      // Last 5 transactions
+      const recentTx = txList.slice(0, 5).map((t: any) => ({
+        type: t.type,
+        amount: Number(t.amount),
+        category: t.categories?.name_en || "Other",
+        description: t.description_en || "",
+        date: t.transaction_date,
+        addedBy: t.added_by ? (profileMap[t.added_by] || "User") : (profile.full_name || "User"),
+      }));
+
+      // Per-member totals
+      const memberTotals: Record<string, { expense: number; income: number }> = {};
+      for (const t of txList) {
+        const name = (t as any).added_by ? (profileMap[(t as any).added_by] || "Unknown") : (profile.full_name || "User");
+        if (!memberTotals[name]) memberTotals[name] = { expense: 0, income: 0 };
+        memberTotals[name][(t as any).type as "income" | "expense"] += Number((t as any).amount);
+      }
+
+      return {
+        success: true,
+        overview: {
+          account_name: account.name,
+          period_days: toolInput.days || 30,
+          total_income: totalIncome,
+          total_expense: totalExpense,
+          net_savings: totalIncome - totalExpense,
+          savings_rate: totalIncome > 0 ? `${((totalIncome - totalExpense) / totalIncome * 100).toFixed(1)}%` : "N/A",
+          total_transactions: txList.length,
+          family_members: members.map((m) => ({ name: m.name, role: m.role })),
+          top_expense_categories: topExpenseCategories,
+          top_income_sources: topIncomeCategories,
+          member_breakdown: Object.entries(memberTotals).map(([name, totals]) => ({
+            name,
+            expense: totals.expense,
+            income: totals.income,
+          })),
+          recent_transactions: recentTx,
+        }
+      };
+    }
+
+    case "get_member_spending": {
+      const { members, profileMap } = await buildMemberMap();
+      const daysAgo = new Date();
+      daysAgo.setDate(daysAgo.getDate() - (toolInput.days || 30));
+
+      const { data: allTx } = await supabase
+        .from("transactions")
+        .select("type, amount, category_id, categories(name_en), added_by, transaction_date")
+        .eq("account_id", account.id)
+        .gte("transaction_date", daysAgo.toISOString().split("T")[0]);
+
+      const txList = allTx || [];
+
+      // Build per-member details
+      const memberData: Record<string, {
+        name: string;
+        role: string;
+        totalExpense: number;
+        totalIncome: number;
+        transactionCount: number;
+        topCategories: Record<string, number>;
+      }> = {};
+
+      // Initialize for all members
+      for (const m of members) {
+        memberData[m.profileId || m.name] = {
+          name: m.name,
+          role: m.role,
+          totalExpense: 0,
+          totalIncome: 0,
+          transactionCount: 0,
+          topCategories: {},
+        };
+      }
+
+      for (const t of txList) {
+        const memberId = (t as any).added_by || "unknown";
+        const memberName = memberId !== "unknown" ? (profileMap[memberId] || "Unknown") : (profile.full_name || "User");
+        const key = memberId !== "unknown" ? memberId : memberName;
+
+        if (!memberData[key]) {
+          memberData[key] = {
+            name: memberName,
+            role: "member",
+            totalExpense: 0,
+            totalIncome: 0,
+            transactionCount: 0,
+            topCategories: {},
+          };
+        }
+
+        const md = memberData[key];
+        md.transactionCount++;
+        if ((t as any).type === "expense") {
+          md.totalExpense += Number((t as any).amount);
+          const cat = (t as any).categories?.name_en || "Other";
+          md.topCategories[cat] = (md.topCategories[cat] || 0) + Number((t as any).amount);
+        } else {
+          md.totalIncome += Number((t as any).amount);
+        }
+      }
+
+      const memberList = Object.values(memberData).map((m) => ({
+        name: m.name,
+        role: m.role,
+        total_expense: m.totalExpense,
+        total_income: m.totalIncome,
+        net: m.totalIncome - m.totalExpense,
+        transaction_count: m.transactionCount,
+        top_expense_categories: Object.entries(m.topCategories)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 5)
+          .map(([cat, amt]) => ({ category: cat, amount: amt })),
+      }));
+
+      return {
+        success: true,
+        period_days: toolInput.days || 30,
+        members: memberList,
+        highest_spender: memberList.sort((a, b) => b.total_expense - a.total_expense)[0]?.name || "N/A",
+        highest_earner: memberList.sort((a, b) => b.total_income - a.total_income)[0]?.name || "N/A",
       };
     }
 
@@ -216,6 +475,82 @@ export async function POST(request: NextRequest) {
       region: process.env.AWS_REGION || "us-east-1",
     });
 
+    // Fetch baseline financial context so AI always has the user's data
+    const supabase = createServiceClient();
+    let financialContext = "";
+    try {
+      const { profile: userProfile, account: userAccount } = await getAccountForUser(supabase, userId);
+      if (userProfile && userAccount) {
+        // Get members
+        const { data: memberRows } = await supabase
+          .from("account_members")
+          .select("profile_id, role, invited_email, accepted")
+          .eq("account_id", userAccount.id);
+
+        const memberIds = (memberRows || []).map((m: any) => m.profile_id).filter(Boolean);
+        let profileNames: Record<string, string> = {};
+        if (memberIds.length > 0) {
+          const { data: profiles } = await supabase
+            .from("profiles")
+            .select("id, full_name, email")
+            .in("id", memberIds);
+          if (profiles) {
+            for (const p of profiles) {
+              profileNames[p.id] = p.full_name || p.email || "Unknown";
+            }
+          }
+        }
+
+        const memberList = (memberRows || []).map((m: any) => {
+          const name = m.profile_id ? (profileNames[m.profile_id] || "Unknown") : (m.invited_email || "Pending");
+          return `${name} (${m.role}${m.accepted ? "" : ", pending"})`;
+        });
+
+        // Get last 30 days summary
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const { data: recentTx } = await supabase
+          .from("transactions")
+          .select("type, amount, category_id, categories(name_en), added_by, transaction_date, description_en")
+          .eq("account_id", userAccount.id)
+          .gte("transaction_date", thirtyDaysAgo.toISOString().split("T")[0])
+          .order("transaction_date", { ascending: false })
+          .limit(100);
+
+        const txList = recentTx || [];
+        const totalIncome = txList.filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
+        const totalExpense = txList.filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+
+        const catTotals: Record<string, number> = {};
+        for (const t of txList.filter((t: any) => t.type === "expense")) {
+          const cat = (t as any).categories?.name_en || "Other";
+          catTotals[cat] = (catTotals[cat] || 0) + Number(t.amount);
+        }
+        const topCats = Object.entries(catTotals).sort(([, a], [, b]) => b - a).slice(0, 5);
+
+        const lastTx = txList[0];
+        const lastTxInfo = lastTx
+          ? `Last transaction: ${(lastTx as any).type} of PKR ${(lastTx as any).amount} on ${(lastTx as any).transaction_date} for ${(lastTx as any).categories?.name_en || "Other"}${(lastTx as any).added_by ? ` (by ${profileNames[(lastTx as any).added_by] || "User"})` : ""}`
+          : "No recent transactions";
+
+        financialContext = `
+
+📊 USER'S CURRENT FINANCIAL DATA (last 30 days):
+- Account: ${userAccount.name}
+- Family Members: ${memberList.length > 0 ? memberList.join(", ") : "Solo account"}
+- Total Income: PKR ${totalIncome.toLocaleString("en-PK")}
+- Total Expenses: PKR ${totalExpense.toLocaleString("en-PK")}
+- Net Savings: PKR ${(totalIncome - totalExpense).toLocaleString("en-PK")}
+- Transactions: ${txList.length}
+- Top Expense Categories: ${topCats.map(([c, a]) => `${c}: PKR ${(a as number).toLocaleString("en-PK")}`).join(", ") || "None"}
+- ${lastTxInfo}
+
+Use the tools to get MORE DETAILED data when needed. Always reference the user's ACTUAL numbers when giving advice.`;
+      }
+    } catch (ctxErr) {
+      console.error("Error fetching financial context:", ctxErr);
+    }
+
     // Build conversation messages - ensure first message is always "user" role
     const conversationMessages: any[] = [];
     
@@ -240,7 +575,7 @@ export async function POST(request: NextRequest) {
       conversationMessages.shift();
     }
 
-    const systemPrompt = `You are an intelligent AI financial advisor for HisaabKitaab (حساب کتاب), a Pakistani personal finance app.
+    const systemPrompt = `You are an intelligent AI financial advisor for HisaabKitaab (حساب کتاب), a Pakistani family finance app.
 
 ⚠️ ABSOLUTE RULE — NON-NEGOTIABLE:
 You MUST REFUSE any question that is NOT about personal finance, money management, budgeting, savings, investments, taxes, banking, or the HisaabKitaab app.
@@ -251,22 +586,28 @@ If the user asks about history, politics, celebrities, sports, entertainment, sc
 
 🎯 YOUR CAPABILITIES (only for finance topics):
 1. Creating transactions when users tell you about expenses/income
-2. Analyzing their spending patterns
-3. Providing financial advice based on their actual data
-4. Answering questions about their finances
+2. Analyzing their spending patterns — by category, by family member, over time
+3. Providing personalized financial advice based on their ACTUAL data
+4. Answering questions about family spending, savings, budgets
+5. Comparing member spending and income contributions
 
-📊 USE TOOLS ONLY WHEN (finance-related):
-- User says "I spent X on Y" → create_transaction
-- User mentions "I earned", "I got paid" → create_transaction
-- User asks "where is my money going" → get_spending_summary
-- User asks "what did I buy recently" → get_recent_transactions
-- User needs budget advice → get_spending_summary first, then advise
+📊 TOOL USAGE GUIDE:
+- "I spent X on Y" / "I earned X" → create_transaction
+- "What was my last transaction?" / "Show recent expenses" → get_recent_transactions
+- "Where is my money going?" / "How much on groceries?" → get_spending_summary
+- "How are my finances?" / "Summary" / "How much have I saved?" → get_financial_overview
+- "Who spends the most?" / "How much did X spend?" / "Member comparison" → get_member_spending
+- For BROAD questions, use get_financial_overview FIRST, then other tools if needed
+- ALWAYS call a tool when the user asks about their data — do NOT guess from context alone
+${financialContext}
 
 Guidelines:
 - Respond in ${language === "ur" ? "Urdu (اردو)" : "English"}
-- Be conversational and helpful for FINANCE topics only
+- Be conversational, specific, and data-driven — cite actual PKR amounts from their data
 - Currency: PKR (Pakistani Rupees — never use ₹ or Rs. or INR)
-- Pakistani context: HBL, UBL, Meezan Bank, PSX, prize bonds, NSS, gold, Islamic finance`;
+- Pakistani context: HBL, UBL, Meezan Bank, PSX, prize bonds, NSS, gold, Islamic finance
+- When giving advice, reference their actual spending categories and amounts
+- For family accounts, mention which member spent/earned when relevant`;
 
     const command = new InvokeModelCommand({
       modelId: "anthropic.claude-3-sonnet-20240229-v1:0",

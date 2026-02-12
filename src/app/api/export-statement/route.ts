@@ -65,21 +65,38 @@ export async function GET(request: NextRequest) {
 
     const txList = transactions || [];
 
-    // Look up profile names for added_by (member attribution)
-    const addedByIds = [...new Set(
-      txList.map((t: any) => t.added_by).filter(Boolean)
-    )];
-    let profileNameMap: Record<string, string> = {};
-    if (addedByIds.length > 0) {
-      const { data: profiles } = await supabase
+    // Look up ALL members of this account for the statement header
+    const { data: memberRows } = await supabase
+      .from("account_members")
+      .select("profile_id, role, invited_email, accepted")
+      .eq("account_id", account.id)
+      .order("joined_at", { ascending: true });
+
+    const memberProfileIds = (memberRows || []).map((m: any) => m.profile_id).filter(Boolean);
+    let allProfileMap: Record<string, { name: string; email: string }> = {};
+    if (memberProfileIds.length > 0) {
+      const { data: memberProfiles } = await supabase
         .from("profiles")
         .select("id, full_name, email")
-        .in("id", addedByIds);
-      if (profiles) {
-        for (const p of profiles) {
-          profileNameMap[p.id] = p.full_name || p.email || "Unknown";
+        .in("id", memberProfileIds);
+      if (memberProfiles) {
+        for (const p of memberProfiles) {
+          allProfileMap[p.id] = { name: p.full_name || p.email || "Unknown", email: p.email || "" };
         }
       }
+    }
+
+    const members = (memberRows || []).map((m: any) => ({
+      name: m.profile_id ? (allProfileMap[m.profile_id]?.name || "Unknown") : (m.invited_email || "Pending"),
+      email: m.profile_id ? (allProfileMap[m.profile_id]?.email || m.invited_email || "") : (m.invited_email || ""),
+      role: m.role,
+      accepted: m.accepted,
+    }));
+
+    // Build profile name map for transaction attribution (reusing allProfileMap)
+    let profileNameMap: Record<string, string> = {};
+    for (const [id, prof] of Object.entries(allProfileMap)) {
+      profileNameMap[id] = prof.name;
     }
 
     // Calculate totals
@@ -134,9 +151,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       statement: {
         accountName: account.name,
+        accountType: members.length > 1 ? "Family Account" : "Personal Account",
         userName: profile.full_name || profile.email || "User",
         period: { start: dateStart, end: dateEnd, type: period },
         generatedAt: new Date().toISOString(),
+        members,
       },
       summary: {
         totalIncome,
