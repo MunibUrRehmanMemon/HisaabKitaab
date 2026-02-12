@@ -27,12 +27,10 @@ interface Member {
   id: string;
   role: string;
   accepted: boolean;
-  invited_email: string | null;
-  profile: {
-    email: string;
-    full_name: string | null;
-    avatar_url: string | null;
-  } | null;
+  email: string;
+  name: string | null;
+  avatar: string | null;
+  profileId: string | null;
 }
 
 export default function SettingsPage() {
@@ -55,6 +53,7 @@ export default function SettingsPage() {
   const [removing, setRemoving] = useState<string | null>(null);
   const [memberError, setMemberError] = useState("");
   const [memberSuccess, setMemberSuccess] = useState("");
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -296,9 +295,9 @@ export default function SettingsPage() {
                         className="flex items-center justify-between p-3 rounded-lg border bg-card"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          {member.profile?.avatar_url ? (
+                          {member.avatar ? (
                             <img
-                              src={member.profile.avatar_url}
+                              src={member.avatar}
                               alt=""
                               className="h-8 w-8 rounded-full object-cover flex-shrink-0"
                             />
@@ -309,10 +308,10 @@ export default function SettingsPage() {
                           )}
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium truncate">
-                              {member.profile?.full_name || member.invited_email || member.profile?.email || "Unknown"}
+                              {member.name || member.email || "Unknown"}
                             </p>
                             <p className="text-xs text-muted-foreground truncate">
-                              {member.profile?.email || member.invited_email || ""}
+                              {member.email || ""}
                             </p>
                           </div>
                         </div>
@@ -532,7 +531,30 @@ export default function SettingsPage() {
                     {t("settings.confirmDelete")}
                   </p>
                 </div>
-                <Button variant="destructive" size="sm">Delete Account</Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={deletingAccount}
+                  onClick={async () => {
+                    if (!confirm("Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently removed.")) return;
+                    if (!confirm("This is your LAST chance. Type OK to confirm you want to DELETE your account forever.")) return;
+                    try {
+                      setDeletingAccount(true);
+                      await user?.delete();
+                      router.push("/");
+                    } catch (err) {
+                      console.error("Failed to delete account:", err);
+                      alert("Failed to delete account. Please try again.");
+                      setDeletingAccount(false);
+                    }
+                  }}
+                >
+                  {deletingAccount ? (
+                    <><Loader2 className="me-2 h-4 w-4 animate-spin" />Deleting...</>
+                  ) : (
+                    "Delete Account"
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
