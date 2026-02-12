@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       .insert({
         owner_id: existingProfile.id,
         name: "My Account",
-        mode: "individual",
+        mode: "family",
       })
       .select("id")
       .single();

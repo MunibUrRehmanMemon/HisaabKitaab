@@ -65,13 +65,30 @@ export async function GET(request: NextRequest) {
       .filter((t: any) => t.type === "expense")
       .reduce((sum: number, t: any) => sum + Number(t.amount), 0);
 
-    // Get recent transactions (last 10)
+    // Get recent transactions (last 10) — include added_by for member attribution
     const { data: recentTransactions } = await supabase
       .from("transactions")
-      .select("id, type, amount, category_id, categories(name_en, name_ur, icon, color), description_en, description_ur, transaction_date, source, created_at")
+      .select("id, type, amount, category_id, categories(name_en, name_ur, icon, color), description_en, description_ur, transaction_date, source, created_at, added_by")
       .eq("account_id", account.id)
       .order("created_at", { ascending: false })
       .limit(10);
+
+    // Look up profile names for added_by
+    const addedByIds = [...new Set(
+      (recentTransactions || []).map((t: any) => t.added_by).filter(Boolean)
+    )];
+    let profileNameMap: Record<string, string> = {};
+    if (addedByIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", addedByIds);
+      if (profiles) {
+        for (const p of profiles) {
+          profileNameMap[p.id] = p.full_name || p.email || "Unknown";
+        }
+      }
+    }
 
     return NextResponse.json({
       totalIncome,
@@ -90,6 +107,7 @@ export async function GET(request: NextRequest) {
         descriptionUr: t.description_ur || "",
         date: t.transaction_date,
         source: t.source,
+        addedBy: t.added_by ? (profileNameMap[t.added_by] || "Unknown") : null,
       })),
       transactionCount: transactions.length,
     });

@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     } = await getAccountForUser(supabase, userId);
 
     if (setupError || !profile || !account) {
-      return NextResponse.json({ members: [], accountMode: "individual" });
+      return NextResponse.json({ members: [], accountName: "" });
     }
 
     // Get all members including pending (NO FK join — separate queries)
@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       .order("joined_at", { ascending: true });
 
     if (!memberRows || memberRows.length === 0) {
-      return NextResponse.json({ members: [], accountMode: account.mode });
+      return NextResponse.json({ members: [], accountName: account.name });
     }
 
     // Fetch profiles separately
@@ -146,7 +146,6 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       members: memberAnalytics,
-      accountMode: account.mode,
       accountName: account.name,
     });
   } catch (error: any) {

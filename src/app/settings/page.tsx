@@ -45,7 +45,7 @@ export default function SettingsPage() {
 
   // Family members state
   const [members, setMembers] = useState<Member[]>([]);
-  const [accountInfo, setAccountInfo] = useState<{ mode: string; name: string } | null>(null);
+  const [accountInfo, setAccountInfo] = useState<{ name: string } | null>(null);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("member");
   const [membersLoading, setMembersLoading] = useState(true);

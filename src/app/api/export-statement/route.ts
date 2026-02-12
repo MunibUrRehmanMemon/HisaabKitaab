@@ -45,11 +45,11 @@ export async function GET(request: NextRequest) {
       dateEnd = now.toISOString().split("T")[0];
     }
 
-    // Fetch transactions
+    // Fetch transactions with added_by for member attribution
     const { data: transactions, error: txError } = await supabase
       .from("transactions")
       .select(
-        "id, type, amount, category_id, categories(name_en, name_ur), description_en, description_ur, transaction_date, source, created_at"
+        "id, type, amount, category_id, categories(name_en, name_ur), description_en, description_ur, transaction_date, source, created_at, added_by"
       )
       .eq("account_id", account.id)
       .gte("transaction_date", dateStart)
@@ -64,6 +64,23 @@ export async function GET(request: NextRequest) {
     }
 
     const txList = transactions || [];
+
+    // Look up profile names for added_by (member attribution)
+    const addedByIds = [...new Set(
+      txList.map((t: any) => t.added_by).filter(Boolean)
+    )];
+    let profileNameMap: Record<string, string> = {};
+    if (addedByIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .in("id", addedByIds);
+      if (profiles) {
+        for (const p of profiles) {
+          profileNameMap[p.id] = p.full_name || p.email || "Unknown";
+        }
+      }
+    }
 
     // Calculate totals
     const totalIncome = txList
@@ -93,14 +110,15 @@ export async function GET(request: NextRequest) {
       description: t.description_en || "",
       descriptionUr: t.description_ur || "",
       source: t.source || "manual",
+      addedBy: t.added_by ? (profileNameMap[t.added_by] || "Unknown") : profile.full_name || profile.email || "User",
     }));
 
     // CSV export
     if (format === "csv") {
-      const csvHeader = "Date,Type,Amount (PKR),Category,Description,Source";
+      const csvHeader = "Date,Type,Amount (PKR),Category,Description,Source,Added By";
       const csvRows = formattedTransactions.map(
         (t) =>
-          `${t.date},${t.type},${t.amount},"${t.category}","${t.description.replace(/"/g, '""')}",${t.source}`
+          `${t.date},${t.type},${t.amount},"${t.category}","${t.description.replace(/"/g, '""')}",${t.source},"${t.addedBy}"`
       );
       const csvContent = [csvHeader, ...csvRows].join("\n");
 
@@ -116,7 +134,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       statement: {
         accountName: account.name,
-        accountMode: account.mode,
         userName: profile.full_name || profile.email || "User",
         period: { start: dateStart, end: dateEnd, type: period },
         generatedAt: new Date().toISOString(),

@@ -19,9 +19,9 @@ Talk to it in Urdu, snap a photo of a grocery receipt, or just ask *"Mera paisa 
 - **Voice Transactions** — Speak naturally in Urdu or English. *"Aaj 500 rupay ki sabzi li"* becomes a logged expense.
 - **Bill Scanning** — Point your camera at any receipt, handwritten or printed, Urdu or English. AI extracts every line item.
 - **Smart Chat Advisor** — Ask about your spending habits, get budget tips, or request a breakdown — all in conversation.
-- **Family Mode** — Invite family members, track who spent what, compare spending with beautiful charts.
-- **Dashboard & Analytics** — Monthly trends, category breakdowns, bar charts, pie charts — your money story at a glance.
-- **Export** — Download your statements as CSV, JSON, or PDF whenever you need them.
+- **Family Sharing** — Invite family members from Settings, track who spent what, compare spending with beautiful charts.
+- **Dashboard & Analytics** — Monthly trends, category breakdowns, per-member income/expense graphs, "Who Spent Most?" pie charts — your money story at a glance.
+- **Export** — Download your statements as CSV, JSON, or PDF — with member attribution showing who logged each transaction.
 
 ---
 
@@ -29,13 +29,14 @@ Talk to it in Urdu, snap a photo of a grocery receipt, or just ask *"Mera paisa 
 
 | Layer | Tech |
 |-------|------|
-| Frontend | Next.js · TypeScript · Tailwind CSS · shadcn/ui |
-| Auth | Clerk |
+| Frontend | Next.js 14 (App Router) · TypeScript · Tailwind CSS · shadcn/ui |
+| Auth | Clerk (keyless mode) |
 | Database | Supabase (PostgreSQL) |
 | AI Brain | AWS Bedrock — Claude 3.5 Sonnet |
-| Speech | Browser Web Speech API + AWS Transcribe fallback |
+| Speech | Browser Web Speech API |
 | Charts | Recharts |
 | PDF | jsPDF |
+| Hosting | Vercel |
 
 ---
 
@@ -44,7 +45,7 @@ Talk to it in Urdu, snap a photo of a grocery receipt, or just ask *"Mera paisa 
 ```bash
 # Clone
 git clone https://github.com/MunibUrRehmanMemon/HisaabKitaab.git
-cd HisaabKitaab
+cd HisaabKitaab/frontend
 
 # Install
 npm install
@@ -79,11 +80,16 @@ Open [http://localhost:3000](http://localhost:3000) and start tracking.
 ## 📁 Project Structure
 
 ```
-src/
+frontend/src/
 ├── app/
-│   ├── dashboard/       # Main dashboard with analytics
+│   ├── dashboard/       # Main dashboard with analytics & family charts
 │   ├── settings/        # Profile, family members, preferences
-│   └── api/             # All backend routes
+│   ├── transactions/    # Add new transactions
+│   ├── voice/           # Voice input for transactions
+│   ├── scan/            # Bill scanning with AI
+│   ├── advisor/         # AI chat advisor
+│   ├── statements/      # Export statements (CSV/JSON/PDF)
+│   └── api/             # All backend API routes
 │       ├── ensure-profile/
 │       ├── dashboard-stats/
 │       ├── analytics/
@@ -97,7 +103,7 @@ src/
 ├── components/          # Reusable UI components
 └── lib/
     ├── supabase/        # Database clients
-    ├── aws/             # Bedrock + S3 helpers
+    ├── aws/             # Bedrock helpers
     └── account-helpers  # Shared account resolution
 ```
 
@@ -116,10 +122,11 @@ src/
 ## 👥 Family Sharing
 
 Invite family members from Settings. Once added:
-- Each member's spending is tracked individually
-- Dashboard shows comparison charts and "Who Spent Most?" breakdowns
+- Everyone shares the same dashboard and sees the same data
+- Each member's spending is tracked individually via `added_by`
+- Dashboard shows per-member income/expense comparison charts and "Who Spent Most?" breakdowns
 - Category-wise analysis per member
-- All powered by a shared family account
+- Statements show who logged each transaction
 
 ---
 

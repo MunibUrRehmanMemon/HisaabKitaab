@@ -149,7 +149,7 @@ export async function getAccountForUser(
     .insert({
       owner_id: profile.id,
       name: "My Account",
-      mode: "individual",
+      mode: "family",
     })
     .select("id, name, mode, owner_id")
     .single();

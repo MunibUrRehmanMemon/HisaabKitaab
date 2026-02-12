@@ -82,7 +82,6 @@ export async function GET() {
       account: {
         id: account.id,
         name: account.name,
-        mode: account.mode,
       },
       currentUserRole: role,
       members,
@@ -210,6 +209,12 @@ export async function POST(request: NextRequest) {
         { error: "Failed to add member", details: insertError.message },
         { status: 500 }
       );
+    }
+
+    // If auto-accepted, clean up the invitee's old personal account
+    // so getAccountForUser always resolves to this family account
+    if (invitedProfile) {
+      await cleanupPersonalAccount(supabase, invitedProfile.id, account.id);
     }
 
     return NextResponse.json({
@@ -392,5 +397,54 @@ export async function PATCH(request: NextRequest) {
       { error: "Failed to update member", details: error.message },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * When a user is auto-accepted into a family account, clean up their
+ * old personal account so getAccountForUser always resolves to the family one.
+ * - Moves any transactions from the personal account to the family account
+ * - Deletes the owner membership row for the personal account
+ * - Deletes the personal account itself
+ */
+async function cleanupPersonalAccount(
+  supabase: any,
+  profileId: string,
+  familyAccountId: string
+) {
+  try {
+    // Find personal accounts owned by this user
+    const { data: ownedAccounts } = await supabase
+      .from("accounts")
+      .select("id")
+      .eq("owner_id", profileId);
+
+    if (!ownedAccounts || ownedAccounts.length === 0) return;
+
+    for (const ownedAccount of ownedAccounts) {
+      if (ownedAccount.id === familyAccountId) continue; // skip if same
+
+      // Move all transactions from personal account to family account
+      await supabase
+        .from("transactions")
+        .update({ account_id: familyAccountId })
+        .eq("account_id", ownedAccount.id);
+
+      // Delete the owner membership row
+      await supabase
+        .from("account_members")
+        .delete()
+        .eq("account_id", ownedAccount.id)
+        .eq("profile_id", profileId);
+
+      // Delete the personal account
+      await supabase
+        .from("accounts")
+        .delete()
+        .eq("id", ownedAccount.id);
+    }
+  } catch (err) {
+    console.error("Error cleaning up personal account:", err);
+    // Non-fatal — the invited membership priority in getAccountForUser will still work
   }
 }

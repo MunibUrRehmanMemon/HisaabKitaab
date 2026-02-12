@@ -69,6 +69,7 @@ interface Transaction {
   descriptionUr: string;
   date: string;
   source: string;
+  addedBy?: string | null;
 }
 
 interface AnalyticsData {
@@ -102,7 +103,6 @@ interface MemberData {
 
 interface MemberAnalyticsData {
   members: MemberData[];
-  accountMode: string;
   accountName: string;
 }
 
@@ -513,9 +513,6 @@ export default function DashboardPage() {
               <h3 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
                 Family Members
-                <span className="text-xs font-normal text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                  {memberAnalytics.accountMode}
-                </span>
               </h3>
               <Button
                 variant="ghost"
@@ -885,6 +882,11 @@ export default function DashboardPage() {
                           {tx.source !== "manual" && (
                             <span className="ms-1 text-primary">
                               ({tx.source === "voice" ? "🎤" : tx.source === "auto" ? "🤖" : tx.source === "bill_scan" ? "📷" : ""})
+                            </span>
+                          )}
+                          {tx.addedBy && (
+                            <span className="ms-1 text-muted-foreground/70">
+                              • by {tx.addedBy.split(" ")[0]}
                             </span>
                           )}
                         </p>
