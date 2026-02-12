@@ -4,7 +4,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { getAccountForUser } from "@/lib/account-helpers";
 
 /**
- * GET /api/members — list members of the user's active account
+ * GET /api/members — list members of the user's account
+ * Uses separate queries instead of FK joins for reliability
  */
 export async function GET() {
   try {
@@ -26,14 +27,56 @@ export async function GET() {
       );
     }
 
-    // Fetch all members
-    const { data: members } = await supabase
+    // Step 1: Fetch all account_members rows (no FK join)
+    const { data: memberRows, error: membersError } = await supabase
       .from("account_members")
-      .select(
-        "id, role, accepted, invited_email, spending_limit, created_at, profile_id, profiles(id, email, full_name, avatar_url)"
-      )
+      .select("id, role, accepted, invited_email, spending_limit, created_at, profile_id")
       .eq("account_id", account.id)
       .order("created_at", { ascending: true });
+
+    if (membersError) {
+      console.error("Error fetching members:", membersError);
+      return NextResponse.json(
+        { error: "Failed to fetch members", details: membersError.message },
+        { status: 500 }
+      );
+    }
+
+    // Step 2: Collect all profile_ids that are not null
+    const profileIds = (memberRows || [])
+      .map((m: any) => m.profile_id)
+      .filter(Boolean);
+
+    // Step 3: Fetch profiles separately
+    let profileMap: Record<string, any> = {};
+    if (profileIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, avatar_url")
+        .in("id", profileIds);
+
+      if (profiles) {
+        for (const p of profiles) {
+          profileMap[p.id] = p;
+        }
+      }
+    }
+
+    // Step 4: Merge and return
+    const members = (memberRows || []).map((m: any) => {
+      const prof = m.profile_id ? profileMap[m.profile_id] : null;
+      return {
+        id: m.id,
+        role: m.role,
+        accepted: m.accepted,
+        email: prof?.email || m.invited_email || "—",
+        name: prof?.full_name || null,
+        avatar: prof?.avatar_url || null,
+        spendingLimit: m.spending_limit,
+        joinedAt: m.created_at,
+        profileId: m.profile_id,
+      };
+    });
 
     return NextResponse.json({
       account: {
@@ -42,17 +85,7 @@ export async function GET() {
         mode: account.mode,
       },
       currentUserRole: role,
-      members: (members || []).map((m: any) => ({
-        id: m.id,
-        role: m.role,
-        accepted: m.accepted,
-        email: m.profiles?.email || m.invited_email || "—",
-        name: m.profiles?.full_name || null,
-        avatar: m.profiles?.avatar_url || null,
-        spendingLimit: m.spending_limit,
-        joinedAt: m.created_at,
-        profileId: m.profile_id,
-      })),
+      members,
     });
   } catch (error: any) {
     console.error("Error listing members:", error);
@@ -64,7 +97,7 @@ export async function GET() {
 }
 
 /**
- * POST /api/members — invite a new member by email
+ * POST /api/members — add a member by email
  * Body: { email: string, role?: string }
  */
 export async function POST(request: NextRequest) {
@@ -83,6 +116,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const normalizedEmail = email.toLowerCase().trim();
+
     const supabase = createServiceClient();
     const { profile, account, role, error } = await getAccountForUser(
       supabase,
@@ -99,22 +134,32 @@ export async function POST(request: NextRequest) {
     // Only owner/admin can invite
     if (role !== "owner" && role !== "admin") {
       return NextResponse.json(
-        { error: "Only account owner or admin can invite members" },
+        { error: "Only account owner or admin can add members" },
         { status: 403 }
       );
     }
 
-    // Check if email is already a member
-    const { data: existingMember } = await supabase
-      .from("account_members")
-      .select("id")
-      .eq("account_id", account.id)
-      .eq("invited_email", email.toLowerCase())
-      .maybeSingle();
-
-    if (existingMember) {
+    // Can't add yourself
+    if (profile.email?.toLowerCase() === normalizedEmail) {
       return NextResponse.json(
-        { error: "This email is already invited to the account" },
+        { error: "You are already the account owner" },
+        { status: 409 }
+      );
+    }
+
+    // Check if email is already a member by invited_email OR by profile email
+    const { data: allMembers } = await supabase
+      .from("account_members")
+      .select("id, profile_id, invited_email")
+      .eq("account_id", account.id);
+
+    // Check invited_email match
+    const alreadyInvited = (allMembers || []).find(
+      (m: any) => m.invited_email?.toLowerCase() === normalizedEmail
+    );
+    if (alreadyInvited) {
+      return NextResponse.json(
+        { error: "This email has already been added to your account" },
         { status: 409 }
       );
     }
@@ -123,57 +168,31 @@ export async function POST(request: NextRequest) {
     const { data: invitedProfile } = await supabase
       .from("profiles")
       .select("id, email")
-      .eq("email", email.toLowerCase())
+      .eq("email", normalizedEmail)
       .maybeSingle();
 
-    // Also check if they're already a member via profile_id
+    // Check if they're already a member via profile_id
     if (invitedProfile) {
-      const { data: existingByProfile } = await supabase
-        .from("account_members")
-        .select("id")
-        .eq("account_id", account.id)
-        .eq("profile_id", invitedProfile.id)
-        .maybeSingle();
-
-      if (existingByProfile) {
+      const alreadyByProfile = (allMembers || []).find(
+        (m: any) => m.profile_id === invitedProfile.id
+      );
+      if (alreadyByProfile) {
         return NextResponse.json(
-          { error: "This user is already a member of the account" },
+          { error: "This user is already a member of your account" },
           { status: 409 }
         );
       }
     }
 
-    // Upgrade account to "family" mode if currently individual
-    if (account.mode === "individual") {
-      await supabase
-        .from("accounts")
-        .update({ mode: "family", name: "Family Account" })
-        .eq("id", account.id);
-
-      // Ensure the owner is in account_members table too
-      await supabase
-        .from("account_members")
-        .upsert(
-          {
-            account_id: account.id,
-            profile_id: profile.id,
-            role: "owner",
-            accepted: true,
-            invited_email: profile.email?.toLowerCase() || "",
-          },
-          { onConflict: "account_id,profile_id" }
-        );
-    }
-
-    // Insert the new member invitation
+    // Insert the new member
     const insertData: any = {
       account_id: account.id,
       role: memberRole || "member",
-      invited_email: email.toLowerCase(),
+      invited_email: normalizedEmail,
       accepted: false,
     };
 
-    // If the invitee already has a profile, link them immediately and auto-accept
+    // If the invitee already has a profile, link and auto-accept immediately
     if (invitedProfile) {
       insertData.profile_id = invitedProfile.id;
       insertData.accepted = true;
@@ -186,9 +205,9 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error("Error inviting member:", insertError);
+      console.error("Error adding member:", insertError);
       return NextResponse.json(
-        { error: "Failed to invite member", details: insertError.message },
+        { error: "Failed to add member", details: insertError.message },
         { status: 500 }
       );
     }
@@ -198,13 +217,13 @@ export async function POST(request: NextRequest) {
       memberId: newMember.id,
       autoAccepted: !!invitedProfile,
       message: invitedProfile
-        ? `${email} has been added to your account`
-        : `Invitation sent. ${email} will be linked when they sign up.`,
+        ? `${email} has been added to your account!`
+        : `${email} saved. They'll be linked when they sign up.`,
     });
   } catch (error: any) {
-    console.error("Error inviting member:", error);
+    console.error("Error adding member:", error);
     return NextResponse.json(
-      { error: "Failed to invite member", details: error.message },
+      { error: "Failed to add member", details: error.message },
       { status: 500 }
     );
   }
@@ -212,7 +231,6 @@ export async function POST(request: NextRequest) {
 
 /**
  * DELETE /api/members — remove a member
- * Body: { memberId: string }
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -221,7 +239,6 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Support both query params and body
     let memberId: string | null = request.nextUrl.searchParams.get("memberId");
     if (!memberId) {
       try {
@@ -249,7 +266,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Only owner/admin can remove
     if (role !== "owner" && role !== "admin") {
       return NextResponse.json(
         { error: "Only account owner or admin can remove members" },
@@ -257,7 +273,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Don't allow removing the owner
+    // Check the target member
     const { data: targetMember } = await supabase
       .from("account_members")
       .select("id, role")
@@ -302,7 +318,7 @@ export async function DELETE(request: NextRequest) {
 }
 
 /**
- * PATCH /api/members — update a member's display name or role
+ * PATCH /api/members — update a member's name or role
  * Body: { memberId: string, name?: string, role?: string }
  */
 export async function PATCH(request: NextRequest) {
@@ -322,11 +338,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const supabase = createServiceClient();
-    const {
-      account,
-      role,
-      error,
-    } = await getAccountForUser(supabase, userId);
+    const { account, role, error } = await getAccountForUser(supabase, userId);
 
     if (error || !account) {
       return NextResponse.json(
@@ -335,7 +347,6 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Only owner/admin can edit members
     if (role !== "owner" && role !== "admin") {
       return NextResponse.json(
         { error: "Only account owner or admin can edit members" },
@@ -343,7 +354,6 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Verify the member belongs to this account
     const { data: targetMember } = await supabase
       .from("account_members")
       .select("id, role, profile_id")
@@ -358,7 +368,6 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Update the profile name if provided and member has a profile
     if (name !== undefined && targetMember.profile_id) {
       await supabase
         .from("profiles")
@@ -366,7 +375,6 @@ export async function PATCH(request: NextRequest) {
         .eq("id", targetMember.profile_id);
     }
 
-    // Update role if provided (can't change owner)
     if (newRole && targetMember.role !== "owner") {
       const validRoles = ["admin", "member", "viewer"];
       if (validRoles.includes(newRole)) {

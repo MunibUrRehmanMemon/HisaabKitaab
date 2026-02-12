@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
           .from("accounts")
           .insert({
             owner_id: existingProfile.id,
-            name: "Personal Account",
+            name: "My Account",
             mode: "individual",
           })
           .select("id")
@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
                 profile_id: existingProfile.id,
                 role: "owner",
                 accepted: true,
+                invited_email: existingProfile.email?.toLowerCase() || "",
               },
               { onConflict: "account_id,profile_id" }
             );
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
         .from("accounts")
         .insert({
           owner_id: newProfile.id,
-          name: "Personal Account",
+          name: "My Account",
           mode: "individual",
         })
         .select("id")
@@ -134,6 +135,7 @@ export async function POST(request: NextRequest) {
               profile_id: newProfile.id,
               role: "owner",
               accepted: true,
+              invited_email: newProfile.email?.toLowerCase() || "",
             },
             { onConflict: "account_id,profile_id" }
           );

@@ -2,11 +2,14 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { clerkClient } from "@clerk/nextjs/server";
 
 /**
- * Resolves the active account for a user. Checks:
- * 1. Accounts where user is an accepted member (via account_members)
- *    — prefers family/shop accounts first
- * 2. Accounts the user owns (via owner_id)
- * 3. Auto-creates a personal account if nothing exists
+ * Resolves the active account for a user.
+ * Uses separate queries (NO FK joins) for maximum reliability.
+ *
+ * Flow:
+ * 1. Get or create profile from Clerk
+ * 2. Find account_members rows for this profile (accepted)
+ * 3. Fetch account details separately
+ * 4. Auto-create account if none exists
  *
  * Returns { profile, account, role, error }
  */
@@ -22,7 +25,6 @@ export async function getAccountForUser(
     .single();
 
   if (!profile) {
-    // Auto-create profile from Clerk
     const client = await clerkClient();
     const user = await client.users.getUser(clerkUserId);
 
@@ -49,42 +51,65 @@ export async function getAccountForUser(
     profile = newProfile;
   }
 
-  // 2. Check if user is an accepted member of any account (prefer family/shop over individual)
+  // 2. Find memberships (NO FK join — just get account_id and role)
   const { data: memberships } = await supabase
     .from("account_members")
-    .select("account_id, role, accounts(id, name, mode, owner_id)")
+    .select("account_id, role")
     .eq("profile_id", profile.id)
     .eq("accepted", true)
     .order("created_at", { ascending: true });
 
   if (memberships && memberships.length > 0) {
-    // Prefer family/shop accounts over individual
-    const familyMembership = memberships.find(
-      (m: any) =>
-        m.accounts?.mode === "family" || m.accounts?.mode === "shop"
-    );
-    const chosen = familyMembership || memberships[0];
-    return {
-      profile,
-      account: (chosen as any).accounts,
-      role: chosen.role,
-      error: null,
-    };
+    // 3. Fetch the actual accounts separately
+    const accountIds = memberships.map((m: any) => m.account_id);
+    const { data: accounts } = await supabase
+      .from("accounts")
+      .select("id, name, mode, owner_id")
+      .in("id", accountIds);
+
+    if (accounts && accounts.length > 0) {
+      // Build a lookup: accountId -> membership role
+      const roleMap: Record<string, string> = {};
+      for (const m of memberships) {
+        roleMap[m.account_id] = m.role;
+      }
+
+      // Just pick the first account (they all share the same data)
+      const chosen = accounts[0];
+      return {
+        profile,
+        account: chosen,
+        role: roleMap[chosen.id] || "member",
+        error: null,
+      };
+    }
   }
 
-  // 3. Check if user owns any account directly
+  // 4. Check if user owns any account directly (fallback)
   const { data: ownedAccounts } = await supabase
     .from("accounts")
     .select("id, name, mode, owner_id")
     .eq("owner_id", profile.id)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(1);
 
   if (ownedAccounts && ownedAccounts.length > 0) {
-    // Prefer family/shop over individual
-    const familyAccount = ownedAccounts.find(
-      (a: any) => a.mode === "family" || a.mode === "shop"
-    );
-    const chosen = familyAccount || ownedAccounts[0];
+    const chosen = ownedAccounts[0];
+
+    // Ensure owner is also in account_members for consistency
+    await supabase
+      .from("account_members")
+      .upsert(
+        {
+          account_id: chosen.id,
+          profile_id: profile.id,
+          role: "owner",
+          accepted: true,
+          invited_email: profile.email?.toLowerCase() || "",
+        },
+        { onConflict: "account_id,profile_id" }
+      );
+
     return {
       profile,
       account: chosen,
@@ -93,12 +118,12 @@ export async function getAccountForUser(
     };
   }
 
-  // 4. No account at all — create a default personal account & owner membership
+  // 5. No account at all — create one
   const { data: newAccount, error: accountError } = await supabase
     .from("accounts")
     .insert({
       owner_id: profile.id,
-      name: "Personal Account",
+      name: "My Account",
       mode: "individual",
     })
     .select("id, name, mode, owner_id")
@@ -113,13 +138,14 @@ export async function getAccountForUser(
     };
   }
 
-  // Also insert the owner as an account_member for consistency
+  // Add owner as account_member
   await supabase.from("account_members").insert({
     account_id: newAccount.id,
     profile_id: profile.id,
     role: "owner",
     accepted: true,
-  }).select().maybeSingle(); // ignore if constraint fails
+    invited_email: profile.email?.toLowerCase() || "",
+  });
 
   return {
     profile,

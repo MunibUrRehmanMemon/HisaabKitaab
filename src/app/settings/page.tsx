@@ -89,8 +89,8 @@ export default function SettingsPage() {
       const data = await res.json();
       if (res.ok) {
         setMemberSuccess(data.autoAccepted
-          ? `✅ ${inviteEmail} added and linked to your family account!`
-          : `✅ ${inviteEmail} saved! They'll be automatically linked when they sign up on HisaabKitaab with this email.`);
+          ? `✅ ${inviteEmail} added and linked to your account!`
+          : `✅ ${inviteEmail} saved! Ask them to sign up on HisaabKitaab with this email to get linked.`);
         setInviteEmail("");
         fetchMembers();
       } else {
@@ -219,21 +219,15 @@ export default function SettingsPage() {
             <CardHeader>
               <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
                 <Users className="h-5 w-5 text-primary" />
-                Family &amp; Members
+                Shared Account &amp; Members
               </CardTitle>
-              {accountInfo && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  Account: <span className="font-medium">{accountInfo.name}</span> &middot;
-                  Mode: <span className="capitalize font-medium">{accountInfo.mode}</span>
-                </p>
-              )}
             </CardHeader>
             <CardContent className="space-y-5">
               {/* Invite Form */}
               <div className="space-y-3">
-                <Label className="text-sm font-medium">Invite a Member</Label>
+                <Label className="text-sm font-medium">Add a Member</Label>
                 <p className="text-xs text-muted-foreground">
-                  Add family members by their email. If they already have a HisaabKitaab account, they&apos;ll be linked instantly. Otherwise, they&apos;ll be linked when they sign up with that email.
+                  Share your account with family or team members. If they already have a HisaabKitaab account, they&apos;ll be linked instantly. Otherwise, ask them to sign up with that email.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <Input
@@ -263,7 +257,7 @@ export default function SettingsPage() {
                     ) : (
                       <UserPlus className="me-2 h-4 w-4" />
                     )}
-                    Invite
+                    Add
                   </Button>
                 </div>
                 {memberError && (
@@ -285,7 +279,7 @@ export default function SettingsPage() {
                   </div>
                 ) : members.length === 0 ? (
                   <p className="text-sm text-muted-foreground py-3">
-                    No members yet. Invite someone to share your account.
+                    No added members yet. Add someone above to share your account.
                   </p>
                 ) : (
                   <div className="space-y-2">

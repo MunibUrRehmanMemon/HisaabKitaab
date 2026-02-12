@@ -1,5 +1,11 @@
 # حساب کتاب — HisaabKitaab
 
+<p align="center">
+  <a href="https://hisaab-kitaab-five.vercel.app/"><strong>🌐 Live App → hisaab-kitaab-five.vercel.app</strong></a>
+</p>
+
+---
+
 **Your pocket-sized financial buddy for Pakistan.**
 
 HisaabKitaab is a bilingual (English + اردو) AI-powered finance app built for everyday Pakistanis — individuals tracking chai-and-paratha expenses, families splitting household bills, or shop owners keeping a digital *bahi khata*.
