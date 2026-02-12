@@ -25,12 +25,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ members: [], accountMode: "individual" });
     }
 
-    // Get all accepted members (NO FK join — separate queries)
+    // Get all members including pending (NO FK join — separate queries)
     const { data: memberRows } = await supabase
       .from("account_members")
-      .select("id, role, profile_id, invited_email")
+      .select("id, role, profile_id, invited_email, accepted")
       .eq("account_id", account.id)
-      .eq("accepted", true)
       .order("joined_at", { ascending: true });
 
     if (!memberRows || memberRows.length === 0) {
@@ -126,6 +125,7 @@ export async function GET(request: NextRequest) {
         email: prof?.email || m.invited_email || "",
         avatar: prof?.avatar_url || null,
         role: m.role,
+        accepted: m.accepted ?? false,
         month: {
           income: Math.round(monthIncome),
           expenses: Math.round(monthExpenses),

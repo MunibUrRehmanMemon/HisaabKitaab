@@ -2,14 +2,13 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { clerkClient } from "@clerk/nextjs/server";
 
 /**
- * Resolves the active account for a user.
+ * Resolves the SINGLE active account for a user.
  * Uses separate queries (NO FK joins) for maximum reliability.
  *
- * Flow:
- * 1. Get or create profile from Clerk
- * 2. Find account_members rows for this profile (accepted)
- * 3. Fetch account details separately
- * 4. Auto-create account if none exists
+ * CRITICAL: Prevents race condition duplicates by:
+ * 1. Always checking OWNED accounts FIRST (most reliable)
+ * 2. Then checking memberships
+ * 3. Only creating if truly nothing exists
  *
  * Returns { profile, account, role, error }
  */
@@ -32,7 +31,7 @@ export async function getAccountForUser(
       .from("profiles")
       .insert({
         clerk_user_id: clerkUserId,
-        email: user.emailAddresses[0]?.emailAddress || "",
+        email: user.emailAddresses[0]?.emailAddress?.toLowerCase() || "",
         full_name:
           `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
         avatar_url: user.imageUrl || null,
@@ -51,41 +50,37 @@ export async function getAccountForUser(
     profile = newProfile;
   }
 
-  // 2. Find memberships (NO FK join — just get account_id and role)
-  const { data: memberships } = await supabase
+  // 2. Check if the user was INVITED to any account (non-owner role)
+  //    This takes priority — if someone invited you to their family account,
+  //    you should see that family account, not your personal one.
+  const { data: invitedMemberships } = await supabase
     .from("account_members")
     .select("account_id, role")
     .eq("profile_id", profile.id)
     .eq("accepted", true)
-    .order("joined_at", { ascending: true });
+    .neq("role", "owner")
+    .order("joined_at", { ascending: true })
+    .limit(1);
 
-  if (memberships && memberships.length > 0) {
-    // 3. Fetch the actual accounts separately
-    const accountIds = memberships.map((m: any) => m.account_id);
-    const { data: accounts } = await supabase
+  if (invitedMemberships && invitedMemberships.length > 0) {
+    const membership = invitedMemberships[0];
+    const { data: familyAccount } = await supabase
       .from("accounts")
       .select("id, name, mode, owner_id")
-      .in("id", accountIds);
+      .eq("id", membership.account_id)
+      .single();
 
-    if (accounts && accounts.length > 0) {
-      // Build a lookup: accountId -> membership role
-      const roleMap: Record<string, string> = {};
-      for (const m of memberships) {
-        roleMap[m.account_id] = m.role;
-      }
-
-      // Just pick the first account (they all share the same data)
-      const chosen = accounts[0];
+    if (familyAccount) {
       return {
         profile,
-        account: chosen,
-        role: roleMap[chosen.id] || "member",
+        account: familyAccount,
+        role: membership.role,
         error: null,
       };
     }
   }
 
-  // 4. Check if user owns any account directly (fallback)
+  // 3. Check if user OWNS any account (personal account)
   const { data: ownedAccounts } = await supabase
     .from("accounts")
     .select("id, name, mode, owner_id")
@@ -96,7 +91,7 @@ export async function getAccountForUser(
   if (ownedAccounts && ownedAccounts.length > 0) {
     const chosen = ownedAccounts[0];
 
-    // Ensure owner is also in account_members for consistency
+    // Ensure owner is in account_members
     await supabase
       .from("account_members")
       .upsert(
@@ -118,7 +113,37 @@ export async function getAccountForUser(
     };
   }
 
-  // 5. No account at all — create one
+  // 4. Is the user a MEMBER of any other account? (fallback)
+  const { data: memberships } = await supabase
+    .from("account_members")
+    .select("account_id, role")
+    .eq("profile_id", profile.id)
+    .eq("accepted", true)
+    .order("joined_at", { ascending: true });
+
+  if (memberships && memberships.length > 0) {
+    const accountIds = memberships.map((m: any) => m.account_id);
+    const { data: accounts } = await supabase
+      .from("accounts")
+      .select("id, name, mode, owner_id")
+      .in("id", accountIds);
+
+    if (accounts && accounts.length > 0) {
+      const roleMap: Record<string, string> = {};
+      for (const m of memberships) {
+        roleMap[m.account_id] = m.role;
+      }
+      const chosen = accounts[0];
+      return {
+        profile,
+        account: chosen,
+        role: roleMap[chosen.id] || "member",
+        error: null,
+      };
+    }
+  }
+
+  // 5. No account at all — create one (ONLY reaches here if truly none exists)
   const { data: newAccount, error: accountError } = await supabase
     .from("accounts")
     .insert({

@@ -18,131 +18,102 @@ export async function POST(request: NextRequest) {
       .eq("clerk_user_id", userId)
       .single();
 
-    if (existingProfile) {
-      // Profile exists — check for pending invitations by email and link them
-      await linkPendingInvitations(supabase, existingProfile);
+    if (!existingProfile) {
+      // Profile doesn't exist — create from Clerk data
+      const client = await clerkClient();
+      const user = await client.users.getUser(userId);
+      const userEmail =
+        user.emailAddresses[0]?.emailAddress?.toLowerCase() || "";
 
-      // Ensure at least one account exists (either owned or as a member)
-      const { data: memberships } = await supabase
-        .from("account_members")
-        .select("account_id")
-        .eq("profile_id", existingProfile.id)
-        .eq("accepted", true)
-        .limit(1);
+      const { data: newProfile, error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          clerk_user_id: userId,
+          email: userEmail,
+          full_name:
+            `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          avatar_url: user.imageUrl || null,
+        })
+        .select("id, email")
+        .single();
 
-      const { data: ownedAccount } = await supabase
-        .from("accounts")
-        .select("id")
-        .eq("owner_id", existingProfile.id)
-        .limit(1);
-
-      if (
-        (!memberships || memberships.length === 0) &&
-        (!ownedAccount || ownedAccount.length === 0)
-      ) {
-        // No account at all — create a personal one
-        const { data: newAccount } = await supabase
-          .from("accounts")
-          .insert({
-            owner_id: existingProfile.id,
-            name: "My Account",
-            mode: "individual",
-          })
-          .select("id")
-          .single();
-
-        // Add as owner in account_members
-        if (newAccount) {
-          await supabase
-            .from("account_members")
-            .upsert(
-              {
-                account_id: newAccount.id,
-                profile_id: existingProfile.id,
-                role: "owner",
-                accepted: true,
-                invited_email: existingProfile.email?.toLowerCase() || "",
-              },
-              { onConflict: "account_id,profile_id" }
-            );
-        }
+      if (profileError) {
+        console.error("Error creating profile:", profileError);
+        return NextResponse.json(
+          { error: "Failed to create profile", details: profileError.message },
+          { status: 500 }
+        );
       }
-
-      return NextResponse.json({
-        success: true,
-        profileId: existingProfile.id,
-      });
+      existingProfile = newProfile;
     }
 
-    // Profile doesn't exist — create it from Clerk data
-    const client = await clerkClient();
-    const user = await client.users.getUser(userId);
-    const userEmail =
-      user.emailAddresses[0]?.emailAddress?.toLowerCase() || "";
-
-    const { data: newProfile, error: profileError } = await supabase
-      .from("profiles")
-      .insert({
-        clerk_user_id: userId,
-        email: userEmail,
-        full_name:
-          `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-        avatar_url: user.imageUrl || null,
-      })
-      .select("id, email")
-      .single();
-
-    if (profileError) {
-      console.error("Error creating profile:", profileError);
-      return NextResponse.json(
-        {
-          error: "Failed to create user profile",
-          details: profileError.message,
-        },
-        { status: 500 }
-      );
+    if (!existingProfile) {
+      return NextResponse.json({ error: "Failed to resolve profile" }, { status: 500 });
     }
 
-    // Check if this new user has any pending invitations
-    await linkPendingInvitations(supabase, newProfile);
+    // Link any pending invitations (invited by email, profile_id is null)
+    await linkPendingInvitations(supabase, existingProfile);
 
-    // Check if they now have an account via invitation
-    const { data: linkedMemberships } = await supabase
+    // Check if user OWNS any account already
+    const { data: ownedAccounts } = await supabase
+      .from("accounts")
+      .select("id")
+      .eq("owner_id", existingProfile.id)
+      .limit(1);
+
+    if (ownedAccounts && ownedAccounts.length > 0) {
+      // Already has an account — just ensure membership row exists
+      await supabase
+        .from("account_members")
+        .upsert(
+          {
+            account_id: ownedAccounts[0].id,
+            profile_id: existingProfile.id,
+            role: "owner",
+            accepted: true,
+            invited_email: existingProfile.email?.toLowerCase() || "",
+          },
+          { onConflict: "account_id,profile_id" }
+        );
+
+      return NextResponse.json({ success: true, profileId: existingProfile.id });
+    }
+
+    // Check if user is a member of any account (via invitation link)
+    const { data: memberAccounts } = await supabase
       .from("account_members")
       .select("account_id")
-      .eq("profile_id", newProfile.id)
+      .eq("profile_id", existingProfile.id)
       .eq("accepted", true)
       .limit(1);
 
-    if (!linkedMemberships || linkedMemberships.length === 0) {
-      // No invitation found — create a default personal account
-      const { data: newAccount } = await supabase
-        .from("accounts")
-        .insert({
-          owner_id: newProfile.id,
-          name: "My Account",
-          mode: "individual",
-        })
-        .select("id")
-        .single();
-
-      if (newAccount) {
-        await supabase
-          .from("account_members")
-          .upsert(
-            {
-              account_id: newAccount.id,
-              profile_id: newProfile.id,
-              role: "owner",
-              accepted: true,
-              invited_email: newProfile.email?.toLowerCase() || "",
-            },
-            { onConflict: "account_id,profile_id" }
-          );
-      }
+    if (memberAccounts && memberAccounts.length > 0) {
+      // Already linked to an account as member — no need to create
+      return NextResponse.json({ success: true, profileId: existingProfile.id });
     }
 
-    return NextResponse.json({ success: true, profileId: newProfile.id });
+    // No account at all — create a personal one
+    const { data: newAccount } = await supabase
+      .from("accounts")
+      .insert({
+        owner_id: existingProfile.id,
+        name: "My Account",
+        mode: "individual",
+      })
+      .select("id")
+      .single();
+
+    if (newAccount) {
+      await supabase.from("account_members").insert({
+        account_id: newAccount.id,
+        profile_id: existingProfile.id,
+        role: "owner",
+        accepted: true,
+        invited_email: existingProfile.email?.toLowerCase() || "",
+      });
+    }
+
+    return NextResponse.json({ success: true, profileId: existingProfile.id });
   } catch (error: any) {
     console.error("Error ensuring profile:", error);
     return NextResponse.json(

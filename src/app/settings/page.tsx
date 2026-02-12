@@ -58,14 +58,19 @@ export default function SettingsPage() {
   const fetchMembers = useCallback(async () => {
     try {
       setMembersLoading(true);
+      setMemberError("");
       const res = await fetch("/api/members");
       const data = await res.json();
       if (res.ok) {
         setMembers(data.members || []);
         setAccountInfo(data.account || null);
+      } else {
+        console.error("Members API error:", data);
+        setMemberError(data.error || "Failed to load members");
       }
-    } catch {
-      // silently fail
+    } catch (err) {
+      console.error("Failed to fetch members:", err);
+      setMemberError("Network error loading members");
     } finally {
       setMembersLoading(false);
     }

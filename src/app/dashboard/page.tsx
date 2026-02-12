@@ -84,6 +84,7 @@ interface MemberData {
   email: string;
   avatar: string | null;
   role: string;
+  accepted: boolean;
   month: {
     income: number;
     expenses: number;
@@ -506,7 +507,7 @@ export default function DashboardPage() {
         )}
 
         {/* ===== FAMILY MEMBERS SECTION ===== */}
-        {!isLoading && memberAnalytics && memberAnalytics.members.length > 1 && (
+        {!isLoading && memberAnalytics && memberAnalytics.members.length > 0 && (
           <div className="mb-6 sm:mb-8">
             <div className="flex items-center justify-between mb-3 sm:mb-4">
               <h3 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
@@ -605,6 +606,11 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-1 mt-0.5">
                             {getRoleIcon(member.role)}
                             <span className="text-[10px] text-muted-foreground capitalize">{member.role}</span>
+                            {!member.accepted && (
+                              <span className="ms-1 px-1.5 py-0.5 rounded text-[9px] bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                awaiting signup
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
