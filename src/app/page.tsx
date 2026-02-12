@@ -25,13 +25,10 @@ export default function HomePage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Redirect to dashboard if user is signed in and has completed onboarding
     if (isSignedIn && isLoaded) {
-      // You can check if onboarding is complete from user metadata
-      // For now, just redirect to dashboard
-      // router.push("/dashboard");
+      router.push("/dashboard");
     }
-  }, [isSignedIn, isLoaded]);
+  }, [isSignedIn, isLoaded, router]);
 
   return (
     <div className="flex min-h-screen flex-col">
