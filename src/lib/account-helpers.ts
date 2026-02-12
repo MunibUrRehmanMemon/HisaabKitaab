@@ -26,28 +26,48 @@ export async function getAccountForUser(
   if (!profile) {
     const client = await clerkClient();
     const user = await client.users.getUser(clerkUserId);
+    const userEmail = user.emailAddresses[0]?.emailAddress?.toLowerCase() || "";
 
-    const { data: newProfile, error: profileError } = await supabase
-      .from("profiles")
-      .insert({
-        clerk_user_id: clerkUserId,
-        email: user.emailAddresses[0]?.emailAddress?.toLowerCase() || "",
-        full_name:
-          `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-        avatar_url: user.imageUrl || null,
-      })
-      .select("id, email, full_name, avatar_url")
-      .single();
-
-    if (profileError || !newProfile) {
-      return {
-        profile: null,
-        account: null,
-        role: null,
-        error: profileError?.message || "Failed to create profile",
-      };
+    // Check if a profile with this email already exists (different Clerk account)
+    if (userEmail) {
+      const { data: emailProfiles } = await supabase
+        .from("profiles")
+        .select("id, email, full_name, avatar_url")
+        .eq("email", userEmail)
+        .limit(1);
+      if (emailProfiles && emailProfiles.length > 0) {
+        // Link existing profile to this Clerk user
+        await supabase
+          .from("profiles")
+          .update({ clerk_user_id: clerkUserId })
+          .eq("id", emailProfiles[0].id);
+        profile = emailProfiles[0];
+      }
     }
-    profile = newProfile;
+
+    if (!profile) {
+      const { data: newProfile, error: profileError } = await supabase
+        .from("profiles")
+        .insert({
+          clerk_user_id: clerkUserId,
+          email: userEmail,
+          full_name:
+            `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+          avatar_url: user.imageUrl || null,
+        })
+        .select("id, email, full_name, avatar_url")
+        .single();
+
+      if (profileError || !newProfile) {
+        return {
+          profile: null,
+          account: null,
+          role: null,
+          error: profileError?.message || "Failed to create profile",
+        };
+      }
+      profile = newProfile;
+    }
   }
 
   // 2. Check if the user was INVITED to any account (non-owner role)

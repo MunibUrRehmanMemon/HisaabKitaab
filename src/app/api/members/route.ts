@@ -164,11 +164,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if the invited user already has a profile
-    const { data: invitedProfile } = await supabase
+    // Use .limit(1) instead of .maybeSingle() to handle duplicate profiles gracefully
+    const { data: invitedProfiles } = await supabase
       .from("profiles")
       .select("id, email")
       .eq("email", normalizedEmail)
-      .maybeSingle();
+      .limit(1);
+    const invitedProfile = invitedProfiles && invitedProfiles.length > 0 ? invitedProfiles[0] : null;
 
     // Check if they're already a member via profile_id
     if (invitedProfile) {

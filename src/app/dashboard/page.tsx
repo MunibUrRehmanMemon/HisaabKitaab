@@ -618,13 +618,21 @@ export default function DashboardPage() {
                       <div className="bg-green-50 dark:bg-green-950/30 rounded-lg py-1.5 px-1">
                         <p className="text-[10px] text-muted-foreground">Income</p>
                         <p className="text-xs font-bold text-green-600">
-                          {member.month.income > 0 ? `${(member.month.income / 1000).toFixed(1)}k` : "0"}
+                          {member.month.income > 0
+                            ? member.month.income >= 1000
+                              ? `${(member.month.income / 1000).toFixed(1)}k`
+                              : formatAmount(member.month.income)
+                            : "0"}
                         </p>
                       </div>
                       <div className="bg-red-50 dark:bg-red-950/30 rounded-lg py-1.5 px-1">
                         <p className="text-[10px] text-muted-foreground">Expenses</p>
                         <p className="text-xs font-bold text-red-600">
-                          {member.month.expenses > 0 ? `${(member.month.expenses / 1000).toFixed(1)}k` : "0"}
+                          {member.month.expenses > 0
+                            ? member.month.expenses >= 1000
+                              ? `${(member.month.expenses / 1000).toFixed(1)}k`
+                              : formatAmount(member.month.expenses)
+                            : "0"}
                         </p>
                       </div>
                       <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg py-1.5 px-1">

@@ -19,32 +19,51 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!existingProfile) {
-      // Profile doesn't exist — create from Clerk data
+      // Profile doesn't exist by clerk_user_id — check by email before creating
       const client = await clerkClient();
       const user = await client.users.getUser(userId);
       const userEmail =
         user.emailAddresses[0]?.emailAddress?.toLowerCase() || "";
 
-      const { data: newProfile, error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          clerk_user_id: userId,
-          email: userEmail,
-          full_name:
-            `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
-          avatar_url: user.imageUrl || null,
-        })
-        .select("id, email")
-        .single();
-
-      if (profileError) {
-        console.error("Error creating profile:", profileError);
-        return NextResponse.json(
-          { error: "Failed to create profile", details: profileError.message },
-          { status: 500 }
-        );
+      // Check if a profile with this email already exists (different Clerk account)
+      if (userEmail) {
+        const { data: emailProfile } = await supabase
+          .from("profiles")
+          .select("id, email")
+          .eq("email", userEmail)
+          .limit(1);
+        if (emailProfile && emailProfile.length > 0) {
+          // Link existing profile to this Clerk user
+          await supabase
+            .from("profiles")
+            .update({ clerk_user_id: userId })
+            .eq("id", emailProfile[0].id);
+          existingProfile = emailProfile[0];
+        }
       }
-      existingProfile = newProfile;
+
+      if (!existingProfile) {
+        const { data: newProfile, error: profileError } = await supabase
+          .from("profiles")
+          .insert({
+            clerk_user_id: userId,
+            email: userEmail,
+            full_name:
+              `${user.firstName || ""} ${user.lastName || ""}`.trim() || null,
+            avatar_url: user.imageUrl || null,
+          })
+          .select("id, email")
+          .single();
+
+        if (profileError) {
+          console.error("Error creating profile:", profileError);
+          return NextResponse.json(
+            { error: "Failed to create profile", details: profileError.message },
+            { status: 500 }
+          );
+        }
+        existingProfile = newProfile;
+      }
     }
 
     if (!existingProfile) {
