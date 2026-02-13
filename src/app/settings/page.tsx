@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { useLanguage } from "@/stores/useLanguage";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Save, UserPlus, Trash2, Users, Crown, Shield, Eye, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, UserPlus, Trash2, Users, Crown, Shield, Eye, Loader2, Phone } from "lucide-react";
 
 interface Member {
   id: string;
@@ -31,6 +31,7 @@ interface Member {
   name: string | null;
   avatar: string | null;
   profileId: string | null;
+  phoneNumber: string | null;
 }
 
 export default function SettingsPage() {
@@ -54,6 +55,9 @@ export default function SettingsPage() {
   const [memberError, setMemberError] = useState("");
   const [memberSuccess, setMemberSuccess] = useState("");
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [editingPhone, setEditingPhone] = useState<string | null>(null);
+  const [phoneInput, setPhoneInput] = useState("");
+  const [savingPhone, setSavingPhone] = useState(false);
 
   const fetchMembers = useCallback(async () => {
     try {
@@ -145,6 +149,30 @@ export default function SettingsPage() {
       case "admin": return "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400";
       case "viewer": return "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400";
       default: return "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400";
+    }
+  };
+
+  const handleSavePhone = async (memberId: string) => {
+    setSavingPhone(true);
+    setMemberError("");
+    try {
+      const res = await fetch("/api/members", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ memberId, phoneNumber: phoneInput }),
+      });
+      if (res.ok) {
+        setMemberSuccess("Phone number saved!");
+        setEditingPhone(null);
+        fetchMembers();
+      } else {
+        const data = await res.json();
+        setMemberError(data.error || "Failed to save phone number");
+      }
+    } catch {
+      setMemberError("Network error saving phone number");
+    } finally {
+      setSavingPhone(false);
     }
   };
 
@@ -291,53 +319,97 @@ export default function SettingsPage() {
                     {members.map((member) => (
                       <div
                         key={member.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-card"
+                        className="p-3 rounded-lg border bg-card space-y-2"
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          {member.avatar ? (
-                            <img
-                              src={member.avatar}
-                              alt=""
-                              className="h-8 w-8 rounded-full object-cover flex-shrink-0"
-                            />
-                          ) : (
-                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                              <Users className="h-4 w-4 text-primary" />
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            {member.avatar ? (
+                              <img
+                                src={member.avatar}
+                                alt=""
+                                className="h-8 w-8 rounded-full object-cover flex-shrink-0"
+                              />
+                            ) : (
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                                <Users className="h-4 w-4 text-primary" />
+                              </div>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">
+                                {member.name || member.email || "Unknown"}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {member.email || ""}
+                              </p>
                             </div>
-                          )}
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium truncate">
-                              {member.name || member.email || "Unknown"}
-                            </p>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {member.email || ""}
-                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
+                              {getRoleIcon(member.role)}
+                              {member.role}
+                            </span>
+                            {!member.accepted && (
+                              <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" title="Will be linked when they sign up on HisaabKitaab">
+                                awaiting signup
+                              </span>
+                            )}
+                            {member.role !== "owner" && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                onClick={() => handleRemove(member.id)}
+                                disabled={removing === member.id}
+                              >
+                                {removing === member.id ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                )}
+                              </Button>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getRoleBadgeColor(member.role)}`}>
-                            {getRoleIcon(member.role)}
-                            {member.role}
-                          </span>
-                          {!member.accepted && (
-                            <span className="px-2 py-0.5 rounded-full text-xs bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400" title="Will be linked when they sign up on HisaabKitaab">
-                              awaiting signup
-                            </span>
-                          )}
-                          {member.role !== "owner" && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRemove(member.id)}
-                              disabled={removing === member.id}
+                        {/* Phone number row */}
+                        <div className="flex items-center gap-2 ps-11">
+                          <Phone className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                          {editingPhone === member.id ? (
+                            <div className="flex items-center gap-1.5 flex-1">
+                              <Input
+                                type="tel"
+                                placeholder="+923001234567"
+                                value={phoneInput}
+                                onChange={(e) => setPhoneInput(e.target.value)}
+                                className="h-7 text-xs flex-1"
+                                dir="ltr"
+                                autoFocus
+                                onKeyDown={(e) => e.key === "Enter" && handleSavePhone(member.id)}
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => handleSavePhone(member.id)}
+                                disabled={savingPhone}
+                              >
+                                {savingPhone ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3 text-primary" />}
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => setEditingPhone(null)}
+                              >
+                                <Trash2 className="h-3 w-3 text-muted-foreground" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              className="text-xs text-muted-foreground hover:text-primary transition-colors cursor-pointer"
+                              onClick={() => { setEditingPhone(member.id); setPhoneInput(member.phoneNumber || "+92"); }}
                             >
-                              {removing === member.id ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-3.5 w-3.5" />
-                              )}
-                            </Button>
+                              {member.phoneNumber || "Add phone for AI calls"}
+                            </button>
                           )}
                         </div>
                       </div>

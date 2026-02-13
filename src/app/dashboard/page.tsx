@@ -26,6 +26,7 @@ import {
   Check,
   X,
   Settings,
+  Phone,
 } from "lucide-react";
 import { HisaabKitaabLogo } from "@/components/Logo";
 import { UserMenu } from "@/components/UserMenu";
@@ -129,6 +130,7 @@ export default function DashboardPage() {
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [savingName, setSavingName] = useState(false);
+  const [isQuickCalling, setIsQuickCalling] = useState(false);
 
   const fetchMemberAnalytics = useCallback(async () => {
     try {
@@ -241,6 +243,29 @@ export default function DashboardPage() {
       case "admin": return <Shield className="h-3 w-3 text-blue-500" />;
       case "viewer": return <Eye className="h-3 w-3 text-gray-400" />;
       default: return <Users className="h-3 w-3 text-emerald-500" />;
+    }
+  };
+
+  const handleQuickCall = async () => {
+    setIsQuickCalling(true);
+    try {
+      const res = await fetch("/api/quick-call", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Quick call failed");
+      }
+      toast({
+        title: language === "ur" ? "کالز شروع ہو گئیں!" : "Calls Initiated!",
+        description: data.message,
+      });
+    } catch (err: any) {
+      toast({
+        title: language === "ur" ? "کال ناکام" : "Quick Call Failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsQuickCalling(false);
     }
   };
 
@@ -359,7 +384,7 @@ export default function DashboardPage() {
           <h3 className="mb-3 sm:mb-4 text-lg sm:text-xl font-semibold">
             {t("dashboard.quickActions")}
           </h3>
-          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-5">
+          <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-6">
             <Button
               variant="outline"
               className="h-20 sm:h-24 flex-col gap-1 sm:gap-2"
@@ -399,6 +424,23 @@ export default function DashboardPage() {
             >
               <FileText className="h-6 w-6 sm:h-8 sm:w-8" />
               <span className="text-xs sm:text-sm">Statements</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-20 sm:h-24 flex-col gap-1 sm:gap-2 border-primary/30 hover:bg-primary/5"
+              onClick={handleQuickCall}
+              disabled={isQuickCalling}
+            >
+              {isQuickCalling ? (
+                <Loader2 className="h-6 w-6 sm:h-8 sm:w-8 animate-spin text-primary" />
+              ) : (
+                <Phone className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+              )}
+              <span className="text-xs sm:text-sm">
+                {isQuickCalling
+                  ? (language === "ur" ? "کال ہو رہی..." : "Calling...")
+                  : (language === "ur" ? "فوری کال" : "Quick Call")}
+              </span>
             </Button>
           </div>
         </div>

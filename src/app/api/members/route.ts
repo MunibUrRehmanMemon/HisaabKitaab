@@ -30,7 +30,7 @@ export async function GET() {
     // Step 1: Fetch all account_members rows (no FK join)
     const { data: memberRows, error: membersError } = await supabase
       .from("account_members")
-      .select("id, role, accepted, invited_email, spending_limit, joined_at, profile_id")
+      .select("id, role, accepted, invited_email, spending_limit, joined_at, profile_id, phone_number")
       .eq("account_id", account.id)
       .order("joined_at", { ascending: true });
 
@@ -75,6 +75,7 @@ export async function GET() {
         spendingLimit: m.spending_limit,
         joinedAt: m.joined_at,
         profileId: m.profile_id,
+        phoneNumber: m.phone_number || null,
       };
     });
 
@@ -325,8 +326,8 @@ export async function DELETE(request: NextRequest) {
 }
 
 /**
- * PATCH /api/members — update a member's name or role
- * Body: { memberId: string, name?: string, role?: string }
+ * PATCH /api/members — update a member's name, role, or phone number
+ * Body: { memberId: string, name?: string, role?: string, phoneNumber?: string }
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -335,7 +336,7 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { memberId, name, role: newRole } = await request.json();
+    const { memberId, name, role: newRole, phoneNumber } = await request.json();
 
     if (!memberId) {
       return NextResponse.json(
@@ -390,6 +391,15 @@ export async function PATCH(request: NextRequest) {
           .update({ role: newRole })
           .eq("id", memberId);
       }
+    }
+
+    // Update phone number
+    if (phoneNumber !== undefined) {
+      const cleanPhone = phoneNumber.replace(/[\s\-()]/g, "").trim();
+      await supabase
+        .from("account_members")
+        .update({ phone_number: cleanPhone || null })
+        .eq("id", memberId);
     }
 
     return NextResponse.json({ success: true });
