@@ -14,7 +14,6 @@ export const dynamic = "force-dynamic";
 /**
  * POST /api/quick-call — Call all family members who have phone numbers
  * with AI-generated monthly financial insights in Urdu.
- * No body needed — it auto-fetches all members + financial data.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -66,7 +65,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fetch financial data
+    // Fetch financial data for current month
     const today = getTodayPKT();
     const firstOfMonth = getFirstOfMonthPKT();
 
@@ -86,9 +85,16 @@ export async function POST(request: NextRequest) {
       .reduce((s: number, t: any) => s + Number(t.amount), 0);
 
     // All-time balance
-    const { data: allTx } = await supabase.from("transactions").select("type, amount").eq("account_id", account.id);
-    const allIncome = (allTx || []).filter((t: any) => t.type === "income").reduce((s: number, t: any) => s + Number(t.amount), 0);
-    const allExpenses = (allTx || []).filter((t: any) => t.type === "expense").reduce((s: number, t: any) => s + Number(t.amount), 0);
+    const { data: allTx } = await supabase
+      .from("transactions")
+      .select("type, amount")
+      .eq("account_id", account.id);
+    const allIncome = (allTx || [])
+      .filter((t: any) => t.type === "income")
+      .reduce((s: number, t: any) => s + Number(t.amount), 0);
+    const allExpenses = (allTx || [])
+      .filter((t: any) => t.type === "expense")
+      .reduce((s: number, t: any) => s + Number(t.amount), 0);
     const balance = allIncome - allExpenses;
 
     // Top expense categories
@@ -133,7 +139,7 @@ export async function POST(request: NextRequest) {
       // Generate AI Urdu message for this member
       let urduMessage: string;
       try {
-        const aiPrompt = `Generate a SHORT phone call message in URDU (Urdu script) for HisaabKitaab (حساب کتاب) financial app.
+        const aiPrompt = `Generate a SHORT phone call message in URDU (Urdu script) for HisaabKitaab financial app.
 
 Call to: ${memberName}
 Monthly income: PKR ${Math.round(totalIncome)}
@@ -144,11 +150,11 @@ Total transactions: ${transactions.length}
 
 RULES:
 1. Write ENTIRELY in Urdu script
-2. Start with "السلام علیکم ${memberName}"
+2. Start with Assalam o Alaikum and the person name
 3. Under 120 words - will be read on phone
 4. Mention income, expenses, balance
 5. Give one brief financial tip
-6. End with "حساب کتاب کا استعمال کرنے کا شکریہ"
+6. End with thanks for using HisaabKitaab
 7. Sound natural, like a friendly financial update call
 8. Return ONLY the Urdu message text`;
 
@@ -171,7 +177,9 @@ RULES:
 
       // Make the call
       try {
-        const phone = member.phone_number.startsWith("+") ? member.phone_number : `+${member.phone_number}`;
+        const phone = member.phone_number.startsWith("+")
+          ? member.phone_number
+          : "+" + member.phone_number;
         const webhookUrl = `${appUrl}/api/twilio-webhook?message=${encodeURIComponent(urduMessage)}`;
 
         const call = await twilioClient.calls.create({
@@ -229,7 +237,5 @@ RULES:
 }
 
 function getDefaultMessage(name: string, income: number, expenses: number, balance: number): string {
-  return `السلام علیکم ${name}۔ یہ حساب کتاب سے ماہانہ مالی رپورٹ ہے۔ اس مہینے کل آمدنی ${Math.round(income)} روپے، اخراجات ${Math.round(expenses)} روپے، اور بیلنس ${Math.round(balance)} روپے ہے۔ اپنے اخراجات پر نظر رکھیں۔ حساب کتاب کا استعمال کرنے کا شکریہ۔`;
+  return `\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u06CC\u06A9\u0645 ${name}\u06D4 \u06CC\u06C1 \u062D\u0633\u0627\u0628 \u06A9\u062A\u0627\u0628 \u0633\u06D2 \u0645\u0627\u06C1\u0627\u0646\u06C1 \u0645\u0627\u0644\u06CC \u0631\u067E\u0648\u0631\u0679 \u06C1\u06D2\u06D4 \u0627\u0633 \u0645\u06C1\u06CC\u0646\u06D2 \u06A9\u0644 \u0622\u0645\u062F\u0646\u06CC ${Math.round(income)} \u0631\u0648\u067E\u06D2\u060C \u0627\u062E\u0631\u0627\u062C\u0627\u062A ${Math.round(expenses)} \u0631\u0648\u067E\u06D2\u060C \u0627\u0648\u0631 \u0628\u06CC\u0644\u0646\u0633 ${Math.round(balance)} \u0631\u0648\u067E\u06D2 \u06C1\u06D2\u06D4 \u0627\u067E\u0646\u06D2 \u0627\u062E\u0631\u0627\u062C\u0627\u062A \u067E\u0631 \u0646\u0638\u0631 \u0631\u06A9\u06BE\u06CC\u06BA\u06D4 \u062D\u0633\u0627\u0628 \u06A9\u062A\u0627\u0628 \u06A9\u0627 \u0627\u0633\u062A\u0639\u0645\u0627\u0644 \u06A9\u0631\u0646\u06D2 \u06A9\u0627 \u0634\u06A9\u0631\u06CC\u06C1\u06D4`;
 }
-/ /   t r i g g e r  
- 
