@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-bedrock-runtime";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAccountForUser } from "@/lib/account-helpers";
+import { getTodayPKT } from "@/lib/date-utils";
 
 /**
  * Sanitize transcript: replace ₹ with PKR, normalize currency references
@@ -185,7 +186,7 @@ Return ONLY valid JSON. No markdown, no explanations, no code fences.`;
               amount: tx.amount,
               category_id: categoryId,
               description_en: tx.description || "",
-              transaction_date: new Date().toISOString().split("T")[0],
+              transaction_date: getTodayPKT(),
               added_by: profile.id,
               source: "voice",
             });

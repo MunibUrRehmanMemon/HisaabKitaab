@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAccountForUser } from "@/lib/account-helpers";
+import { getTodayPKT, getFirstOfMonthPKT } from "@/lib/date-utils";
 
 // Prevent Next.js from caching this route
 export const dynamic = "force-dynamic";
@@ -28,12 +29,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Get this month's date range
-    const now = new Date();
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .split("T")[0];
-    const today = now.toISOString().split("T")[0];
+    // Get this month's date range in Pakistan Standard Time (UTC+5)
+    const today = getTodayPKT();
+    const firstOfMonth = getFirstOfMonthPKT();
 
     // Get this month's transactions
     const { data: monthTransactions } = await supabase

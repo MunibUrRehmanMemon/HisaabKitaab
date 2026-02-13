@@ -4,6 +4,7 @@ import {
   BedrockRuntimeClient,
   InvokeModelCommand,
 } from "@aws-sdk/client-bedrock-runtime";
+import { getTodayPKT } from "@/lib/date-utils";
 
 /**
  * Detect the media type from a data URL. Defaults to image/jpeg.
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
 
 FIRST: Determine if this image is actually a bill, receipt, invoice, or financial document.
 - If the image shows a PERSON, SELFIE, LANDSCAPE, ANIMAL, OBJECT, MEME, SCREENSHOT of non-financial content, or ANYTHING that is NOT a bill/receipt/invoice, you MUST return:
-{"is_bill": false, "amount": 0, "items": [], "confidence": 0, "rejection_reason": "<brief reason, e.g. 'Image shows a person, not a bill'>", "category": "other", "date": "${new Date().toISOString().split("T")[0]}", "description": "", "merchant": ""}
+{"is_bill": false, "amount": 0, "items": [], "confidence": 0, "rejection_reason": "<brief reason, e.g. 'Image shows a person, not a bill'>", "category": "other", "date": "${getTodayPKT()}", "description": "", "merchant": ""}
 - Only proceed with extraction if this IS a bill, receipt, invoice, utility bill, handwritten bill, or financial document.
 
 If it IS a bill/receipt, analyze it carefully:
@@ -268,7 +269,7 @@ Return ONLY valid JSON, no markdown code fences, no explanations.`;
         confidence: 0,
         rejection_reason: parsedData.rejection_reason || "This image does not appear to be a bill or receipt.",
         category: "other",
-        date: new Date().toISOString().split("T")[0],
+        date: getTodayPKT(),
         description: "",
         merchant: "",
       });
@@ -279,7 +280,7 @@ Return ONLY valid JSON, no markdown code fences, no explanations.`;
       parsedData.category = "other";
     }
     if (!parsedData.date) {
-      parsedData.date = new Date().toISOString().split("T")[0];
+      parsedData.date = getTodayPKT();
     }
     if (!parsedData.description) {
       parsedData.description = parsedData.merchant

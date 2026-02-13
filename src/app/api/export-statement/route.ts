@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAccountForUser } from "@/lib/account-helpers";
+import { getTodayPKT, getFirstOfMonthPKT } from "@/lib/date-utils";
 
 // Prevent Next.js from caching this route
 export const dynamic = "force-dynamic";
@@ -27,25 +28,24 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: setupError || "Account not found" }, { status: 404 });
     }
 
-    // Calculate date range
+    // Calculate date range (using Pakistan Standard Time)
     let dateStart: string;
     let dateEnd: string;
-    const now = new Date();
+    const todayPK = getTodayPKT();
 
     if (period === "custom" && startDate && endDate) {
       dateStart = startDate;
       dateEnd = endDate;
     } else if (period === "weekly") {
-      const weekAgo = new Date(now);
-      weekAgo.setDate(weekAgo.getDate() - 7);
+      // Calculate 7 days ago in PKT
+      const [y, m, d] = todayPK.split("-").map(Number);
+      const weekAgo = new Date(y, m - 1, d - 7);
       dateStart = weekAgo.toISOString().split("T")[0];
-      dateEnd = now.toISOString().split("T")[0];
+      dateEnd = todayPK;
     } else {
       // monthly (default)
-      dateStart = new Date(now.getFullYear(), now.getMonth(), 1)
-        .toISOString()
-        .split("T")[0];
-      dateEnd = now.toISOString().split("T")[0];
+      dateStart = getFirstOfMonthPKT();
+      dateEnd = todayPK;
     }
 
     // Fetch transactions with added_by for member attribution

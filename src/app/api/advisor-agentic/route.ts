@@ -6,6 +6,7 @@ import {
 } from "@aws-sdk/client-bedrock-runtime";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAccountForUser } from "@/lib/account-helpers";
+import { getTodayPKT } from "@/lib/date-utils";
 
 interface Tool {
   name: string;
@@ -173,7 +174,7 @@ async function executeToolCall(toolName: string, toolInput: any, userId: string)
         amount: toolInput.amount,
         category_id: categoryId,
         description_en: toolInput.description || "",
-        transaction_date: toolInput.date || new Date().toISOString().split("T")[0],
+        transaction_date: toolInput.date || getTodayPKT(),
         added_by: profile.id,
         source: "auto",
       });
@@ -606,7 +607,11 @@ Use the tools to get MORE DETAILED data when needed. ONLY report numbers that co
       conversationMessages.shift();
     }
 
+    const todayPKT = getTodayPKT();
+
     const systemPrompt = `You are an intelligent AI financial advisor for HisaabKitaab (حساب کتاب), a Pakistani family finance app.
+
+📅 TODAY'S DATE: ${todayPKT} (Pakistan Standard Time). Use this as the default date for any new transaction unless the user specifies a different date.
 
 🗣️ LANGUAGE RULE (CRITICAL):
 - Detect the language of the user's CURRENT message.

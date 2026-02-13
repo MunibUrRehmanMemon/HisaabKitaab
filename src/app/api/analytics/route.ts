@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAccountForUser } from "@/lib/account-helpers";
+import { getTodayPKT, getFirstOfMonthPKT, getPKTDateParts, getMonthsAgoPKT } from "@/lib/date-utils";
 
 // Prevent Next.js from caching this route
 export const dynamic = "force-dynamic";
@@ -25,10 +26,9 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // --- Monthly trend: last 6 months ---
-    const now = new Date();
-    const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
-    const sixMonthsAgoStr = sixMonthsAgo.toISOString().split("T")[0];
+    // --- Monthly trend: last 6 months (using PKT dates) ---
+    const { year: pkYear, month: pkMonth } = getPKTDateParts();
+    const sixMonthsAgoStr = getMonthsAgoPKT(5);
 
     const { data: allTx } = await supabase
       .from("transactions")
@@ -63,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     // Pre-fill 6 months
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d = new Date(pkYear, pkMonth - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       monthlyMap[key] = {
         month: `${monthNames[d.getMonth()]} ${d.getFullYear()}`,
@@ -72,10 +72,8 @@ export async function GET(request: NextRequest) {
       };
     }
 
-    // Category breakdown (current month)
-    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      .toISOString()
-      .split("T")[0];
+    // Category breakdown (current month in PKT)
+    const firstOfMonth = getFirstOfMonthPKT();
     const categoryMap: Record<
       string,
       { name: string; nameUr: string; color: string; amount: number }

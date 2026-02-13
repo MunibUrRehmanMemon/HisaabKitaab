@@ -130,7 +130,9 @@ export default function ScanBillPage() {
     try {
       // Always use today's date for transaction_date (the user is logging it NOW)
       // The bill's printed date is kept in the description for reference
-      const todayDate = new Date().toISOString().split("T")[0];
+      // Use local timezone (user is in Pakistan) — avoids UTC date mismatch
+      const now = new Date();
+      const todayDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
       const billDateNote = scanResult.date && scanResult.date !== todayDate
         ? ` (Bill dated: ${scanResult.date})`
         : "";

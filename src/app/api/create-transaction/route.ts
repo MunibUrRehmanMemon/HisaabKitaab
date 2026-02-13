@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAccountForUser } from "@/lib/account-helpers";
+import { getTodayPKT } from "@/lib/date-utils";
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
         amount: parseFloat(amount),
         category_id: categoryId,
         description_en: description || "",
-        transaction_date: date || new Date().toISOString().split("T")[0],
+        transaction_date: date || getTodayPKT(),
         added_by: profile.id,
         source: source || "manual",
       })

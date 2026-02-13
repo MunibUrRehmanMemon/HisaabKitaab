@@ -142,6 +142,28 @@ export default function DashboardPage() {
     }
   }, []);
 
+  const refreshDashboard = useCallback(async () => {
+    try {
+      const [statsRes, analyticsRes] = await Promise.all([
+        fetch("/api/dashboard-stats", { cache: "no-store" }),
+        fetch("/api/analytics", { cache: "no-store" }),
+      ]);
+
+      if (statsRes.ok) {
+        const data = await statsRes.json();
+        setStats(data);
+      }
+      if (analyticsRes.ok) {
+        const data = await analyticsRes.json();
+        setAnalytics(data);
+      }
+
+      fetchMemberAnalytics();
+    } catch (error: any) {
+      console.error("Error refreshing dashboard:", error);
+    }
+  }, [fetchMemberAnalytics]);
+
   useEffect(() => {
     async function loadDashboard() {
       try {
@@ -149,22 +171,7 @@ export default function DashboardPage() {
         await fetch("/api/ensure-profile", { method: "POST" });
         
         // Fetch dashboard stats, analytics, and member data in parallel
-        const [statsRes, analyticsRes] = await Promise.all([
-          fetch("/api/dashboard-stats", { cache: "no-store" }),
-          fetch("/api/analytics", { cache: "no-store" }),
-        ]);
-        
-        if (statsRes.ok) {
-          const data = await statsRes.json();
-          setStats(data);
-        }
-        if (analyticsRes.ok) {
-          const data = await analyticsRes.json();
-          setAnalytics(data);
-        }
-
-        // Fetch member analytics (non-blocking)
-        fetchMemberAnalytics();
+        await refreshDashboard();
       } catch (error: any) {
         console.error("Error loading dashboard:", error);
         toast({
@@ -177,7 +184,25 @@ export default function DashboardPage() {
       }
     }
     loadDashboard();
-  }, [fetchMemberAnalytics]);
+  }, [refreshDashboard]);
+
+  // Re-fetch data when user navigates back to this page (window focus + visibility change)
+  useEffect(() => {
+    const handleFocus = () => {
+      refreshDashboard();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboard();
+      }
+    };
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [refreshDashboard]);
 
   const handleSaveName = async (memberId: string) => {
     setSavingName(true);
