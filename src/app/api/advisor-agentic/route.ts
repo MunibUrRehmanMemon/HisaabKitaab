@@ -194,9 +194,9 @@ async function executeToolCall(toolName: string, toolInput: any, userId: string)
 
       let query = supabase
         .from("transactions")
-        .select("type, amount, category_id, categories(name_en), description_en, transaction_date, source, added_by")
+        .select("type, amount, category_id, categories(name_en), description_en, transaction_date, source, added_by, created_at")
         .eq("account_id", account.id)
-        .order("transaction_date", { ascending: false })
+        .order("created_at", { ascending: false })
         .limit(Math.min(toolInput.limit || 10, 50));
 
       if (toolInput.type && toolInput.type !== "all") {
@@ -660,7 +660,7 @@ Additional guidelines:
 - For family accounts, mention which member spent/earned when relevant`;
 
     const command = new InvokeModelCommand({
-      modelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+      modelId: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
       contentType: "application/json",
       accept: "application/json",
       body: JSON.stringify({
@@ -731,7 +731,7 @@ Additional guidelines:
       });
 
       const loopCommand = new InvokeModelCommand({
-        modelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+        modelId: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
         contentType: "application/json",
         accept: "application/json",
         body: JSON.stringify({

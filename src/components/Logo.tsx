@@ -12,15 +12,18 @@ export function HisaabKitaabLogo({ className = "h-8 w-8" }: { className?: string
       {/* Inner Circle - Lighter Teal */}
       <circle cx="100" cy="100" r="80" fill="#14B8A6" />
       
-      {/* Rupee Symbol */}
-      <path
-        d="M60 70 H100 M60 90 H100 M70 110 L90 140 M80 70 Q90 90 80 110"
-        stroke="white"
-        strokeWidth="8"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
+      {/* PKR Rs Symbol */}
+      <text
+        x="72"
+        y="118"
+        fontFamily="Arial, sans-serif"
+        fontWeight="bold"
+        fontSize="60"
+        fill="white"
+        textAnchor="middle"
+      >
+        Rs
+      </text>
       
       {/* Book Pages Effect */}
       <rect x="110" y="60" width="30" height="80" rx="2" fill="white" opacity="0.9" />

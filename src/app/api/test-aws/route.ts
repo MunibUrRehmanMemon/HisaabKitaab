@@ -29,7 +29,7 @@ export async function GET() {
 
     // Try a simple test call
     const command = new InvokeModelCommand({
-      modelId: "anthropic.claude-3-sonnet-20240229-v1:0",
+      modelId: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
       contentType: "application/json",
       accept: "application/json",
       body: JSON.stringify({

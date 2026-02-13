@@ -39,7 +39,7 @@ export async function invokeClaude(
   };
 
   const command = new InvokeModelCommand({
-    modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+    modelId: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
     contentType: "application/json",
     accept: "application/json",
     body: JSON.stringify(payload),
@@ -81,7 +81,7 @@ export async function* invokeClaudeStream(
   };
 
   const command = new InvokeModelWithResponseStreamCommand({
-    modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+    modelId: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
     contentType: "application/json",
     accept: "application/json",
     body: JSON.stringify(payload),
@@ -144,7 +144,7 @@ export async function invokeClaudeVision(
   };
 
   const command = new InvokeModelCommand({
-    modelId: "anthropic.claude-3-5-sonnet-20241022-v2:0",
+    modelId: "us.anthropic.claude-sonnet-4-5-20250929-v1:0",
     contentType: "application/json",
     accept: "application/json",
     body: JSON.stringify(payload),
