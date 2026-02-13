@@ -9,7 +9,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Camera, Upload, Loader2, Sparkles, Save, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Camera, Upload, Loader2, Sparkles, Save, CheckCircle2, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import Image from "next/image";
 
@@ -26,26 +26,51 @@ export default function ScanBillPage() {
   const [saved, setSaved] = useState(false);
   const [scanResult, setScanResult] = useState<any>(null);
 
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/jpg", "application/pdf"];
+  const ALLOWED_EXTENSIONS = [".jpg", ".jpeg", ".png", ".pdf"];
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Validate file size (max 10MB for base64)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Please upload an image smaller than 10MB.",
-          variant: "destructive",
-        });
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setSelectedImage(reader.result as string);
-        setScanResult(null);
-        setSaved(false);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // Validate file type
+    const fileExt = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
+    if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(fileExt)) {
+      toast({
+        title: "Unsupported file format",
+        description: `Only JPG, PNG, and PDF files are accepted. You uploaded: ${file.type || fileExt || "unknown format"}`,
+        variant: "destructive",
+      });
+      // Reset the input so the same file can be re-selected after fixing
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
     }
+
+    // Validate file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 10MB.",
+        variant: "destructive",
+      });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onerror = () => {
+      toast({
+        title: "File read error",
+        description: "Could not read the selected file. Please try again.",
+        variant: "destructive",
+      });
+    };
+    reader.onloadend = () => {
+      setSelectedImage(reader.result as string);
+      setScanResult(null);
+      setSaved(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleScan = async () => {
@@ -66,6 +91,18 @@ export default function ScanBillPage() {
       }
 
       const data = await response.json();
+
+      // Check if AI determined this is not a bill
+      if (data.is_bill === false) {
+        setScanResult(null);
+        toast({
+          title: "No bill detected",
+          description: data.rejection_reason || "The uploaded image does not appear to be a bill, receipt, or invoice. Please upload a valid bill.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setScanResult(data);
 
       toast({
@@ -91,6 +128,13 @@ export default function ScanBillPage() {
 
     setIsSaving(true);
     try {
+      // Always use today's date for transaction_date (the user is logging it NOW)
+      // The bill's printed date is kept in the description for reference
+      const todayDate = new Date().toISOString().split("T")[0];
+      const billDateNote = scanResult.date && scanResult.date !== todayDate
+        ? ` (Bill dated: ${scanResult.date})`
+        : "";
+
       const response = await fetch("/api/create-transaction", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,8 +142,8 @@ export default function ScanBillPage() {
           type: "expense",
           amount: scanResult.amount,
           category: scanResult.category || "bills",
-          description: scanResult.description || `Scanned bill - ${scanResult.merchant || ""}`,
-          date: scanResult.date,
+          description: (scanResult.description || `Scanned bill - ${scanResult.merchant || ""}`) + billDateNote,
+          date: todayDate,
           source: "bill_scan",
         }),
       });
@@ -174,7 +218,7 @@ export default function ScanBillPage() {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
                 onChange={handleImageSelect}
                 className="hidden"
               />
@@ -182,8 +226,11 @@ export default function ScanBillPage() {
               {!selectedImage ? (
                 <div className="border-2 border-dashed border-border rounded-lg p-12 text-center">
                   <Camera className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-sm text-muted-foreground mb-2">
                     No image selected
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-4">
+                    Accepted formats: JPG, PNG, PDF
                   </p>
                   <Button onClick={() => fileInputRef.current?.click()}>
                     <Upload className="me-2 h-4 w-4" />
@@ -193,12 +240,20 @@ export default function ScanBillPage() {
               ) : (
                 <div className="space-y-4">
                   <div className="relative aspect-video rounded-lg overflow-hidden border border-border">
-                    <Image
-                      src={selectedImage}
-                      alt="Selected bill"
-                      fill
-                      className="object-contain"
-                    />
+                    {selectedImage.startsWith("data:application/pdf") ? (
+                      <div className="flex flex-col items-center justify-center h-full bg-muted">
+                        <FileText className="h-16 w-16 text-primary mb-2" />
+                        <p className="text-sm font-medium">PDF Document</p>
+                        <p className="text-xs text-muted-foreground">Ready to scan</p>
+                      </div>
+                    ) : (
+                      <Image
+                        src={selectedImage}
+                        alt="Selected bill"
+                        fill
+                        className="object-contain"
+                      />
+                    )}
                   </div>
                   <div className="flex gap-2">
                     <Button
@@ -321,6 +376,14 @@ export default function ScanBillPage() {
                             </span>
                           </li>
                         ))}
+                        {scanResult.items.length > 1 && (
+                          <li className="text-sm flex justify-between pt-2 mt-2 border-t border-border font-bold">
+                            <span>Total</span>
+                            <span className="text-primary">
+                              PKR {typeof scanResult.amount === "number" ? scanResult.amount.toLocaleString("en-PK") : scanResult.amount}
+                            </span>
+                          </li>
+                        )}
                       </ul>
                     </div>
                   )}

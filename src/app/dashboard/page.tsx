@@ -32,6 +32,7 @@ import { UserMenu } from "@/components/UserMenu";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/stores/useLanguage";
+import { useToast } from "@/hooks/use-toast";
 import {
   BarChart,
   Bar,
@@ -120,6 +121,7 @@ export default function DashboardPage() {
   const t = useTranslations();
   const router = useRouter();
   const { language } = useLanguage();
+  const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [memberAnalytics, setMemberAnalytics] = useState<MemberAnalyticsData | null>(null);
@@ -130,13 +132,13 @@ export default function DashboardPage() {
 
   const fetchMemberAnalytics = useCallback(async () => {
     try {
-      const res = await fetch("/api/member-analytics");
+      const res = await fetch("/api/member-analytics", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setMemberAnalytics(data);
       }
-    } catch {
-      // silently fail
+    } catch (error: any) {
+      console.error("Error fetching member analytics:", error);
     }
   }, []);
 
@@ -148,8 +150,8 @@ export default function DashboardPage() {
         
         // Fetch dashboard stats, analytics, and member data in parallel
         const [statsRes, analyticsRes] = await Promise.all([
-          fetch("/api/dashboard-stats"),
-          fetch("/api/analytics"),
+          fetch("/api/dashboard-stats", { cache: "no-store" }),
+          fetch("/api/analytics", { cache: "no-store" }),
         ]);
         
         if (statsRes.ok) {
@@ -163,8 +165,13 @@ export default function DashboardPage() {
 
         // Fetch member analytics (non-blocking)
         fetchMemberAnalytics();
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error loading dashboard:", error);
+        toast({
+          title: "Dashboard load error",
+          description: error?.message || "Failed to load dashboard data. Please refresh the page.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
@@ -183,9 +190,21 @@ export default function DashboardPage() {
       if (res.ok) {
         fetchMemberAnalytics();
         setEditingMember(null);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        toast({
+          title: "Failed to update name",
+          description: errData.error || "Could not save name. Please try again.",
+          variant: "destructive",
+        });
       }
-    } catch {
-      // silently fail
+    } catch (error: any) {
+      console.error("Error saving member name:", error);
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to save name. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setSavingName(false);
     }

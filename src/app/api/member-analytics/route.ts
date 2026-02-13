@@ -3,6 +3,9 @@ import { auth } from "@clerk/nextjs/server";
 import { createServiceClient } from "@/lib/supabase/server";
 import { getAccountForUser } from "@/lib/account-helpers";
 
+// Prevent Next.js from caching this route
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/member-analytics — per-member spending breakdown for the family account
  * Returns: each member's income, expenses, transaction count, and category breakdown

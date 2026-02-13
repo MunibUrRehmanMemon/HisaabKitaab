@@ -40,11 +40,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { image } = await request.json();
+    let body: any;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid request body" },
+        { status: 400 }
+      );
+    }
+
+    const { image } = body;
 
     if (!image) {
       return NextResponse.json(
         { error: "No image provided" },
+        { status: 400 }
+      );
+    }
+
+    // Validate file format — only allow JPEG, PNG, PDF
+    const ALLOWED_MIME_PREFIXES = ["data:image/jpeg", "data:image/jpg", "data:image/png", "data:application/pdf"];
+    const isAllowed = ALLOWED_MIME_PREFIXES.some((prefix) => image.toLowerCase().startsWith(prefix));
+    if (!isAllowed && image.startsWith("data:")) {
+      const detectedType = image.match(/^data:([^;]+);/)?.[1] || "unknown";
+      return NextResponse.json(
+        { error: `Unsupported file format: ${detectedType}. Only JPG, PNG, and PDF are accepted.` },
         { status: 400 }
       );
     }
@@ -54,14 +75,24 @@ export async function POST(request: NextRequest) {
       region: process.env.AWS_REGION || "us-east-1",
     });
 
+    // Handle PDF: Claude Vision accepts PDF as document type
+    const isPdf = image.toLowerCase().startsWith("data:application/pdf");
+
     // Detect actual media type from data URL before stripping prefix
-    const mediaType = detectMediaType(image);
+    const mediaType = isPdf ? "application/pdf" : detectMediaType(image);
 
     // Remove data URL prefix if present
-    const base64Image = image.replace(/^data:image\/[^;]+;base64,/, "");
+    const base64Image = image.replace(/^data:[^;]+;base64,/, "");
 
     // Strong prompt for Pakistani bills, handwritten receipts, and Urdu text
-    const prompt = `You are an expert bill/receipt scanner for Pakistani documents. You can read BOTH PRINTED AND HANDWRITTEN text in ENGLISH AND URDU (اردو). Analyze this image carefully and extract financial information.
+    const prompt = `You are an expert bill/receipt scanner for Pakistani documents. You can read BOTH PRINTED AND HANDWRITTEN text in ENGLISH AND URDU (اردو).
+
+FIRST: Determine if this image is actually a bill, receipt, invoice, or financial document.
+- If the image shows a PERSON, SELFIE, LANDSCAPE, ANIMAL, OBJECT, MEME, SCREENSHOT of non-financial content, or ANYTHING that is NOT a bill/receipt/invoice, you MUST return:
+{"is_bill": false, "amount": 0, "items": [], "confidence": 0, "rejection_reason": "<brief reason, e.g. 'Image shows a person, not a bill'>", "category": "other", "date": "${new Date().toISOString().split("T")[0]}", "description": "", "merchant": ""}
+- Only proceed with extraction if this IS a bill, receipt, invoice, utility bill, handwritten bill, or financial document.
+
+If it IS a bill/receipt, analyze it carefully:
 
 CRITICAL INSTRUCTIONS:
 1. Look for the TOTAL PAYABLE amount, GRAND TOTAL, NET TOTAL, or PAYABLE AFTER DUE DATE. This is the most important field.
@@ -72,6 +103,12 @@ CRITICAL INSTRUCTIONS:
 4. For restaurant bills: Look for "Total", "Bill Total", "Grand Total" (including tax/service charge)
 5. Read ALL numbers carefully. Pakistani amounts use comma formatting: 6,733.93 means six thousand seven hundred thirty-three rupees and 93 paisa.
 6. Currency is ALWAYS PKR (Pakistani Rupees).
+
+MULTIPLE ITEMS RULE:
+- If there are multiple items on the bill, list EACH item with its individual price in the "items" array.
+- The "amount" field MUST be the TOTAL of ALL items combined.
+- If the bill already has a printed total, use that. If it's handwritten with no total, SUM all individual item prices yourself and put that sum as "amount".
+- Double-check: amount should EQUAL the sum of all item prices (plus any tax/service charges if applicable).
 
 HANDWRITTEN / ROUGH WRITING SUPPORT:
 - This may be a handwritten receipt from a local shop (دکان کا بل), general store, or street vendor
@@ -90,6 +127,7 @@ URDU TEXT SUPPORT (اردو):
 
 Extract the following in JSON format:
 {
+  "is_bill": true,
   "amount": <number - the TOTAL amount as a plain number with decimals, e.g. 6733.93, NOT 0>,
   "category": "<one of: food, transport, shopping, bills, healthcare, entertainment, education, salary, rent, utilities, other>",
   "date": "<YYYY-MM-DD format from the bill, or today's date if not visible>",
@@ -101,7 +139,28 @@ Extract the following in JSON format:
 
 IMPORTANT: The "amount" field MUST be a NUMBER greater than 0 if you can see ANY amount on the bill. Look very carefully at all numbers in the image. If there are multiple amounts, use the final total / payable amount. For handwritten bills, if you can read individual item prices but no total, SUM them up. DO NOT return 0 unless the image is completely unreadable.
 
+REMEMBER: If this is NOT a bill/receipt, return is_bill: false. If it IS a bill, return is_bill: true.
+
 Return ONLY valid JSON, no markdown code fences, no explanations.`;
+
+    // Build content block — use document type for PDF, image type for images
+    const fileContentBlock = isPdf
+      ? {
+          type: "document" as const,
+          source: {
+            type: "base64" as const,
+            media_type: "application/pdf" as const,
+            data: base64Image,
+          },
+        }
+      : {
+          type: "image" as const,
+          source: {
+            type: "base64" as const,
+            media_type: mediaType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+            data: base64Image,
+          },
+        };
 
     // Call AWS Bedrock with Claude Vision
     const command = new InvokeModelCommand({
@@ -115,14 +174,7 @@ Return ONLY valid JSON, no markdown code fences, no explanations.`;
           {
             role: "user",
             content: [
-              {
-                type: "image",
-                source: {
-                  type: "base64",
-                  media_type: mediaType,
-                  data: base64Image,
-                },
-              },
+              fileContentBlock,
               {
                 type: "text",
                 text: prompt,
@@ -200,6 +252,26 @@ Return ONLY valid JSON, no markdown code fences, no explanations.`;
         name: item.name || "Item",
         price: parseAmount(item.price),
       }));
+
+      // If multiple items exist and amount is 0 or missing, sum them
+      if (parsedData.items.length > 0 && (!parsedData.amount || parsedData.amount <= 0)) {
+        parsedData.amount = parsedData.items.reduce((sum: number, item: any) => sum + (item.price || 0), 0);
+      }
+    }
+
+    // Check if AI determined this is not a bill
+    if (parsedData.is_bill === false) {
+      return NextResponse.json({
+        is_bill: false,
+        amount: 0,
+        items: [],
+        confidence: 0,
+        rejection_reason: parsedData.rejection_reason || "This image does not appear to be a bill or receipt.",
+        category: "other",
+        date: new Date().toISOString().split("T")[0],
+        description: "",
+        merchant: "",
+      });
     }
 
     // Ensure defaults
