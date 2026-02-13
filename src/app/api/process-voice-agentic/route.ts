@@ -146,7 +146,7 @@ Return ONLY valid JSON. No markdown, no explanations, no code fences.`;
     // Validate and normalize each transaction
     transactions = transactions.map((tx: any) => ({
       type: tx.type === "income" ? "income" : "expense",
-      amount: parseFloat(tx.amount) || 0,
+      amount: Math.round(parseFloat(tx.amount) || 0),
       category: tx.category || "Other",
       description: tx.description || "",
       confidence: parseFloat(tx.confidence) || 0.7,

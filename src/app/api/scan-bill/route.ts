@@ -24,13 +24,13 @@ function detectMediaType(dataUrl: string): string {
  * Returns a number or 0 if unparseable.
  */
 function parseAmount(raw: any): number {
-  if (typeof raw === "number") return raw;
+  if (typeof raw === "number") return Math.round(raw);
   if (!raw) return 0;
   const str = String(raw)
     .replace(/[^\d.,\-]/g, "") // remove everything except digits, commas, dots, minus
     .replace(/,/g, ""); // remove commas (Pakistani formatting: 6,733.93)
   const num = parseFloat(str);
-  return isNaN(num) ? 0 : Math.round(num * 100) / 100;
+  return isNaN(num) ? 0 : Math.round(num);
 }
 
 export async function POST(request: NextRequest) {

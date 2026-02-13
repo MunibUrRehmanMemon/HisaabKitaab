@@ -193,11 +193,12 @@ function NewTransactionContent() {
                 <Input
                   id="amount"
                   type="number"
-                  step="0.01"
-                  placeholder="0.00"
+                  step="1"
+                  min="1"
+                  placeholder="0"
                   value={formData.amount}
                   onChange={(e) =>
-                    setFormData({ ...formData, amount: e.target.value })
+                    setFormData({ ...formData, amount: e.target.value.replace(/\./g, "") })
                   }
                   required
                 />

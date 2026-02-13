@@ -27,8 +27,8 @@ const tools: Tool[] = [
           description: "Whether this is income or expense"
         },
         amount: {
-          type: "number",
-          description: "Transaction amount in PKR"
+          type: "integer",
+          description: "Transaction amount in PKR (whole number, no decimals)"
         },
         category: {
           type: "string",
@@ -171,7 +171,7 @@ async function executeToolCall(toolName: string, toolInput: any, userId: string)
       const { error } = await supabase.from("transactions").insert({
         account_id: account.id,
         type: toolInput.type,
-        amount: toolInput.amount,
+        amount: Math.round(toolInput.amount),
         category_id: categoryId,
         description_en: toolInput.description || "",
         transaction_date: toolInput.date || getTodayPKT(),

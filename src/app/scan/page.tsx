@@ -142,7 +142,7 @@ export default function ScanBillPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           type: "expense",
-          amount: scanResult.amount,
+          amount: Math.round(scanResult.amount),
           category: scanResult.category || "bills",
           description: (scanResult.description || `Scanned bill - ${scanResult.merchant || ""}`) + billDateNote,
           date: todayDate,

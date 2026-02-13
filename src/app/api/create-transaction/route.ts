@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
       .insert({
         account_id: account.id,
         type,
-        amount: parseFloat(amount),
+        amount: Math.round(parseFloat(amount)),
         category_id: categoryId,
         description_en: description || "",
         transaction_date: date || getTodayPKT(),
