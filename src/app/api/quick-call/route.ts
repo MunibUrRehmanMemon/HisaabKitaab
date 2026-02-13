@@ -231,3 +231,5 @@ RULES:
 function getDefaultMessage(name: string, income: number, expenses: number, balance: number): string {
   return `السلام علیکم ${name}۔ یہ حساب کتاب سے ماہانہ مالی رپورٹ ہے۔ اس مہینے کل آمدنی ${Math.round(income)} روپے، اخراجات ${Math.round(expenses)} روپے، اور بیلنس ${Math.round(balance)} روپے ہے۔ اپنے اخراجات پر نظر رکھیں۔ حساب کتاب کا استعمال کرنے کا شکریہ۔`;
 }
+/ /   t r i g g e r  
+ 
